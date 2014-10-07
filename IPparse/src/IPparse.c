@@ -27,7 +27,8 @@ typedef struct ip_hdr{
 	unsigned char Tos ; /*holds 8 bits of Type of system */
 	unsigned short int Total_len; /*holds 16 bits of Total length */
 	unsigned short int ID; /*holds 16 bits of Identification */
-	unsigned short int flag_offset;/*holds 3 bits of flags and 13 bits of fragment offset */
+	unsigned char flags:3; /*holds 3 bits of flags */
+	unsigned short int offset:13;/* 13 bits of fragment offset */
 	unsigned char Ttl;/*holds 8 bits of Time to live */
 	unsigned char protocol;/*holds 8 bits of protocol */
 	unsigned short int chksum;/*holds 16 bits of checksum */
@@ -58,6 +59,8 @@ typedef struct ip_hdr{
 	 printf(" IP Type Of Serves           : %d\n",(unsigned int)ip_header->Tos);
 	 printf(" IP Total Length in Bytes    : %d\n",ntohs(ip_header->Total_len));
 	 printf(" IP Identification           : %d\n",ntohs(ip_header->ID));
+	 printf(" IP flags                    : %d\n",(unsigned int)ip_header->flags);
+	 printf(" IP Offset                   : %d\n",(unsigned int)ip_header->offset);
 	 printf(" IP Time To Live             : %d\n",(unsigned int)ip_header->Ttl);
 	 printf(" IP Protocol                 : %d\n",(unsigned int)ip_header->protocol);
 	 printf(" IP CheckSum                 : %d\n",ntohs(ip_header->chksum));
@@ -71,13 +74,71 @@ typedef struct ip_hdr{
 
 
 
-void print_data(unsigned char *buffer , int size){
+ void print_data(unsigned char *buffer , int size){
+ 	int i = 0;
+ 	int j = 0;
+
+ 	for(i = 0 ; i < size ; i++){
+ 		printf("%02x ",buffer[i]);
+ 		if (i%16 == 0 && i != 0){
+ 			printf("      ");
+ 			for(j = (i-16);j<i ; j++){
+ 				if (buffer[j]>=32 && buffer[j]<=128){
+ 					printf("%c",(unsigned char)buffer[j]);
+ 				}else{
+ 					printf(".");
+ 				}
+ 			}
+ 			printf("\n");
+ 		}
+ 	}
+ 	if( i==size-1)  //print the last spaces
+ 	{
+ 		for(j=0;j<15-i%16;j++){
+ 			printf("   "); //extra spaces
+ 		}
+
+ 		printf("         ");
+
+ 		for(j=i-i%16 ; j<=i ; j++)
+ 		{
+ 			if(buffer[j]>=32 && buffer[j]<=128){
+ 				printf("%c",(unsigned char)buffer[j]);
+ 			}else{
+ 				printf(".");
+ 			}
+ 		}
+ 		printf("\n");
+
+ 	}
+ }
+
+
+ void Print_Usage(){
+
+
+	 printf("         Menu\n");
+	 printf(" Key              Key Description \n");
+	 printf(" -w               write in Wireshark format \n");
+	 printf(" -l               open Device list \n");
+	 printf(" -d               Device choice \n");
+	 printf(" -q               Quit  \n");
+
+
+
+ }
+
+
+
+
+ int main(void){
+
+
+
 
 
 
 }
-
-
 
 
 
