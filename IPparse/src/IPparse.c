@@ -20,6 +20,8 @@
 #include<sys/time.h>
 #include<sys/types.h>
 #include<unistd.h>
+#include <ifaddrs.h>
+
 
 typedef struct ip_hdr{
 	unsigned char version:4 ;/*holds 4 bits of version */
@@ -36,6 +38,21 @@ typedef struct ip_hdr{
 	unsigned int Daddr;/*holds 32 bits of destination address */
 
 }ip_hdr;
+
+
+void print_device_list(struct ifaddrs *dev_list){
+	if (dev_list == NULL){
+		printf("End List\n");
+		return;
+	}
+	printf("%s \n",dev_list->ifa_name);
+	print_device_list(dev_list->ifa_next);
+
+}
+
+
+
+
 
 
 /*function print_ip_header() - unsigned char *buffer holds the ip header
@@ -114,19 +131,12 @@ typedef struct ip_hdr{
  }
 
 
- void Print_Usage(){
-
-
-	 printf("         Menu\n");
-	 printf(" Key              Key Description \n");
-	 printf(" -w               write in Wireshark format \n");
-	 printf(" -l               open Device list \n");
-	 printf(" -d               Device choice \n");
-	 printf(" -q               Quit  \n");
 
 
 
- }
+
+
+
 
 
 
