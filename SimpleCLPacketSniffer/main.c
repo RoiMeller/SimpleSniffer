@@ -271,8 +271,10 @@ struct tcp_pseudo {
     unsigned short length;
 } pseudohead;
 
-inline unsigned int endian_swap_32(unsigned int x) /* PCAP Header BYTEORDER & size */
-{
+
+
+inline unsigned int endian_swap_32(unsigned int x){ /* PCAP Header BYTEORDER & size */
+
     x = (x>>24)               |
         ((x<<8) & 0x00ff0000) |
         ((x>>8) & 0x0000ff00) |
@@ -288,9 +290,9 @@ inline unsigned short endian_swap_16(unsigned short x) /* PCAP Header BYTEORDER 
 }
 
 void DebugPrint(char *buf){
-#ifdef DEBUG
+	#ifdef DEBUG
     printf("DEBUG - %s\n", buf);
-#endif /* DEBUG */
+	#endif /* DEBUG */
 }
 
 /* used to ensure the integrity of data portions for data transmission */
@@ -832,8 +834,8 @@ void dump(void* b, int len, FILE *dump){
     fprintf(out, "  %*s\n\n", 16+(16-len%16)*2, str);
 }
 
-char DumpPacket(char *buffer, int len, int quiet)
-{
+char DumpPacket(char *buffer, int len, int quiet){
+
     struct eth_packet *eth_pkt=(void *)(buffer);
     struct ip_packet *ip = NULL;
 
