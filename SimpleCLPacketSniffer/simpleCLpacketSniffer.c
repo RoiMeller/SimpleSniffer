@@ -33,6 +33,8 @@
 # include <time.h>				//
 # include <unistd.h>			// Various essential POSIX functions and constants
 # include <sys/capability.h>	//
+# include <linux/capability.h>  /* _LINUX_CAPABILITY_VERSION */
+
 # include <netdb.h>				// definitions for network database operations
 
 /* Function & Global Declaration */
@@ -65,8 +67,8 @@
 #endif /*ETH_ALEN*/
 
 /* Export Specified Packets */
-#define ETH_SRC_FILTER       0x00000001
 #define ETH_DST_FILTER       0x00000002
+#define ETH_SRC_FILTER       0x00000001
 #define ETH_TYPE_FILTER      0x00000004
 #define ETH_VLAN_FILTER      0x00000008
 #define IP_SRC_FILTER        0x00000010
@@ -83,6 +85,7 @@
 int debug = 0;
 
 typedef unsigned char uchar;
+typedef unsigned int uint;
 
 /* Filter reference */
 uint  filter_mask = 0;
@@ -271,10 +274,8 @@ struct tcp_pseudo {
     unsigned short length;
 } pseudohead;
 
-
-
-inline unsigned int endian_swap_32(unsigned int x){ /* PCAP Header BYTEORDER & size */
-
+inline unsigned int endian_swap_32(unsigned int x) /* PCAP Header BYTEORDER & size */
+{
     x = (x>>24)               |
         ((x<<8) & 0x00ff0000) |
         ((x>>8) & 0x0000ff00) |
@@ -290,9 +291,40 @@ inline unsigned short endian_swap_16(unsigned short x) /* PCAP Header BYTEORDER 
 }
 
 void DebugPrint(char *buf){
-	#ifdef DEBUG
+#ifdef DEBUG
     printf("DEBUG - %s\n", buf);
-	#endif /* DEBUG */
+#endif /* DEBUG */
+}
+
+int cap_enable(cap_value_t capflag) {
+	cap_t mycaps;
+	mycaps = cap_get_proc();
+
+	if (mycaps == NULL)
+		return -1;
+	if (cap_set_flag(mycaps, CAP_EFFECTIVE, 1, &capflag, CAP_SET) != 0)
+		return -1;
+	if (cap_set_proc(mycaps) != 0)
+		return -1;
+
+	return 0;
+}
+
+int cap_drop(cap_value_t capflag) {
+
+	cap_t mycaps;
+	mycaps = cap_get_proc();
+
+	if (mycaps == NULL)
+		return -1;
+	if (cap_set_flag(mycaps, CAP_EFFECTIVE, 1, &capflag, CAP_CLEAR) != 0)
+		return -1;
+	if (cap_set_flag(mycaps, CAP_PERMITTED, 1, &capflag, CAP_CLEAR) != 0)
+		return -1;
+	if (cap_set_proc(mycaps) != 0)
+		return -1;
+
+	return 0;
 }
 
 /* used to ensure the integrity of data portions for data transmission */
@@ -834,8 +866,8 @@ void dump(void* b, int len, FILE *dump){
     fprintf(out, "  %*s\n\n", 16+(16-len%16)*2, str);
 }
 
-char DumpPacket(char *buffer, int len, int quiet){
-
+char DumpPacket(char *buffer, int len, int quiet)
+{
     struct eth_packet *eth_pkt=(void *)(buffer);
     struct ip_packet *ip = NULL;
 
@@ -1573,6 +1605,7 @@ int main(int argc, char *argv[])
 
     if(iface)
     {
+    	if (cap_drop(CAP_DAC_READ_SEARCH) < 0) return -1;
         struct sockaddr_ll s1;
         struct ifreq interface_obj;
         int result;
