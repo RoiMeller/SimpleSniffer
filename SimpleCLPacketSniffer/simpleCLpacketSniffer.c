@@ -296,6 +296,30 @@ void DebugPrint(char *buf){
 #endif /* DEBUG */
 }
 
+void print_usage(){
+
+	printf("\n*********************************** Usage ***********************************\n");
+	printf("| \n");
+    printf("| Valid arguments:\n");
+    printf("| \n");
+    printf("| To save a .pcap file :	--output <filename>\n");
+    printf("| To suppress output :		--quiet\n");
+    printf("| To specify realtime mode :	--rt\n");
+    printf("| \n");
+    printf("| To specify a negative filter use --not, or ! after the filter type.\n");
+    printf("| ex: --ip-src --not 192.168.1.1\n");
+    printf("| --vlan-id, --eth-src, --eth-dst, --eth-type,\n");
+    printf("| --ip-src, --ip-dst, --ip-proto, --ip-tos, --ip-sport, --ip-dport,\n");
+    printf("| \n");
+    printf("| --u8, --u16, --u32 =>		format is <value>:<offset>\n");
+    printf("| --m32 =>			format is <mask>:<offset>\n");
+    printf("| \n");
+    printf("| --input => specify a pcap file as the input\n");
+    printf("| --interface, --outerface, --promisc\n");
+    printf("| \n");
+    printf("********************* Simple Command Line packetSniffer *********************\n");
+}
+
 int cap_enable(cap_value_t capflag) {
 	cap_t mycaps;
 	mycaps = cap_get_proc();
@@ -1268,6 +1292,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    print_usage(); // Help menu
+
     if(argc > 1)
     {
         while(--argc)
@@ -1295,19 +1321,7 @@ int main(int argc, char *argv[])
 
                 if(!strncmp("--help", argv[argc], 6)) // NEED TO IMPLICATE WITH FUNCTION
                 {
-                    printf("Simple Command Line packetSniffer \n");
-                    printf("Valid arguments:\n");
-                    printf("To save a .pcap file: --output\n");
-                    printf("To suppress output: --quiet\n");
-                    printf("To specify a negative filter use --not, or ! after the filter type.\n");
-                    printf("  ex: --ip-src --not 192.168.1.1\n");
-                    printf("--vlan-id, --eth-src, --eth-dst, --eth-type,\n");
-                    printf("--ip-src, --ip-dst, --ip-proto, --ip-tos, --ip-sport, --ip-dport,\n");
-                    printf("--u8, --u16, --u32 => format is <value>:<offset>\n");
-                    printf("--m32 => format is <mask>:<offset>\n");
-                    printf("--input => specify a pcap file as the input\n");
-                    printf("--interface, --outerface, --promisc\n");
-                    printf("To specify realtime mode: --rt\n");
+                	print_usage();
                 }
 
                 else if(!strncmp("--quiet", argv[argc], 7)) /* CHOOSE RETHEAR TO QUIET PROGRAM ? */
@@ -1347,7 +1361,7 @@ int main(int argc, char *argv[])
                 }
                 else if(!strncmp("--output", argv[argc], 8) && lastarg != NULL)
                 {
-                    printf("Sniffer pcap starting...\n");
+                    printf("Sniffer start pcap execution...\n");
                     pcap_dump_file = fopen(lastarg, "w+");
                     if(pcap_dump_file == NULL)
                     {
