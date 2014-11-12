@@ -38,6 +38,7 @@
 # include <linux/capability.h>  // _LINUX_CAPABILITY_VERSION
 # include <sys/syscall.h>       // __NR_capget
 # include <netdb.h>				// definitions for network database operations
+# include <linux/prctl.h>
 
 /* Function & Global Declaration */
 
@@ -298,58 +299,107 @@ void DebugPrint(char *buf){
 }
 
 void print_usage(){
-
-	printf("\n*********************************** Usage ***********************************\n");
+	printf("\n********************* Simple Command Line packetSniffer *********************\n");
 	printf("| \n");
-    printf("| Valid arguments:\n");
+    printf("| Valid arguments [options]:\n");
     printf("| \n");
-    printf("| To save a .pcap file :	--output <filename>\n");
-    printf("| To suppress output :		--quiet\n");
-    printf("| To specify realtime mode :	--rt\n");
+    printf("| --output <filename>			To save a .pcap file.\n");
+    printf("| --input <path>or<filename>		Specify a pcap file as the input.\n");
+    printf("| --quiet				To suppress output.\n");
+    printf("| --rt					To specify realtime mode.\n");
     printf("| \n");
     printf("| To specify a negative filter use --not, or ! after the filter type.\n");
-    printf("| ex: --ip-src --not 192.168.1.1\n");
-    printf("| --vlan-id, --eth-src, --eth-dst, --eth-type,\n");
-    printf("| --ip-src, --ip-dst, --ip-proto, --ip-tos, --ip-sport, --ip-dport,\n");
+    printf("| example: --ip-src --not 192.168.1.1\n");
     printf("| \n");
-    printf("| --u8, --u16, --u32 =>		format is <value>:<offset>\n");
-    printf("| --m32 =>			format is <mask>:<offset>\n");
+    printf("| options:\n");
+    printf("| --vlan-id, --eth-src, --eth-dst, --eth-type, --ip-src, \n");
+    printf("| --ip-dst, --ip-proto, --ip-tos, --ip-sport, --ip-dport,\n");
     printf("| \n");
-    printf("| --input => specify a pcap file as the input\n");
+    printf("| --u8, --u16, --u32			Format is <value>:<offset>\n");
+    printf("| --m32					Format is <mask>:<offset>\n");
+    printf("| \n");
     printf("| --interface, --outerface, --promisc\n");
     printf("| \n");
-    printf("********************* Simple Command Line packetSniffer *********************\n");
+    printf("| Use Ctrl-C to stop capturing at any time.\n");
+    printf("*********************************** Usage ***********************************\n");
 }
 
-int cap_enable(cap_value_t capflag) {
-	cap_t mycaps;
-	mycaps = cap_get_proc();
+/*
+ ===============================================================
+ If we were linked with libcap (not related to libpcap) and
+ If we started with special privs (ie: suid) then enable for
+ ourself the  NET_ADMIN and NET_RAW capabilities and then
+ drop our suid privileges.
+ ===============================================================
+*/
+int cap_enable(cap_value_t cap_list[]) {
 
-	if (mycaps == NULL)
-		return EXIT_FAILURE;
-	if (cap_set_flag(mycaps, CAP_EFFECTIVE, 1, &capflag, CAP_SET) != 0)
-		return EXIT_FAILURE;
-	if (cap_set_proc(mycaps) != 0)
-		return EXIT_FAILURE;
+    int cl_len = sizeof(cap_list) / sizeof(cap_value_t);
+    cap_t caps = cap_init();    /* all capabilities initialized to off */
 
-	return EXIT_SUCCESS;
-}
+    uid_t ruid;
+    uid_t euid;
+    gid_t rgid;
+    gid_t egid;
 
-int cap_drop(cap_value_t capflag) {
+	ruid = getuid();
+	euid = geteuid();
+	rgid = getgid();
+	egid = getegid();
 
-	cap_t mycaps;
-	mycaps = cap_get_proc();
 
-	if (mycaps == NULL)
-		return EXIT_FAILURE;
-	if (cap_set_flag(mycaps, CAP_EFFECTIVE, 1, &capflag, CAP_CLEAR) != 0)
-		return EXIT_FAILURE;
-	if (cap_set_flag(mycaps, CAP_PERMITTED, 1, &capflag, CAP_CLEAR) != 0)
-		return EXIT_FAILURE;
-	if (cap_set_proc(mycaps) != 0)
-		return EXIT_FAILURE;
+    if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
+    	perror("prctl() fail return");
+    }
 
-	return EXIT_SUCCESS;
+    cap_set_flag(caps, CAP_PERMITTED,   cl_len, cap_list, CAP_SET);
+    cap_set_flag(caps, CAP_INHERITABLE, cl_len, cap_list, CAP_SET);
+
+    if (cap_set_proc(caps)) {
+    	perror("cap_set_proc() fail return");
+    }
+
+    /*
+     ======================================================
+     If we were started with special privileges, set the
+     real and effective group and user IDs to the original
+     values of the real and effective group and user IDs.
+
+     (Set the effective UID last - that takes away our
+     rights to set anything else.)
+     ======================================================
+    */
+
+    /* Real and effective group IDs */
+	if (setgid(rgid) == -1) {
+		perror("setgid");
+		return EXIT_FAILURE;
+	}
+	if (setegid(rgid) == -1) {
+		perror("setegid");
+		return EXIT_FAILURE;
+	}
+
+	/* Real and effective user IDs */
+	if (setuid(ruid) == -1) {
+		perror("setuid");
+		return EXIT_FAILURE;
+	}
+	if (seteuid(ruid) == -1) {
+		perror("seteuid");
+		return EXIT_FAILURE;
+	}
+
+    cap_set_flag(caps, CAP_EFFECTIVE, cl_len, cap_list, CAP_SET);
+
+    if (cap_set_proc(caps)) {
+    	perror("cap_set_proc() fail return");
+    }
+
+    printf("After setting: getuid: %d geteuid: %d Capabilities : %s\n", getuid(), geteuid(), cap_to_text(caps, NULL));
+
+    cap_free(caps);
+    return EXIT_SUCCESS;
 }
 
 /* used to ensure the integrity of data portions for data transmission */
@@ -1284,45 +1334,27 @@ int main(int argc, char *argv[])
     signal(SIGTERM, &terminate_hnd); // The SIGTERM signal is sent to a process to request its termination.
     signal(SIGINT, &terminate_hnd); // The SIGINT signal is sent to a process by its controlling terminal when a user wishes to interrupt the process.
 
-    // ToDo
-    // Dropping and gaining root privileges - my first go :(
-/*
-    struct __user_cap_header_struct h;	// cap user header
-    struct __user_cap_data_struct d;	// cap user data
+    /* Determine if process is running as root */
+    if (getuid() != 0) {
+		printf("This program must run as root\n");
+		return EXIT_FAILURE;
+	}
 
-	//Initialize user cap header
-	h.version = _LINUX_CAPABILITY_VERSION;
-	h.pid = 0;
-
-	int syscall_result;
-
-	syscall_result = syscall(__NR_capget, &h, &d);
-
-    if (getuid() == 0) {
-
-    	printf("process is running as root, drop privileges");
-
-    	if (setgid(groupid) != 0)
-    		perror("setgid: Unable to drop group privileges: ");
-
-    	if (setuid(userid) != 0)
-            perror("setuid: Unable to drop user privileges: ");
-    }
-*/
     /*
-    if (cap_enable(CAP_NET_BIND_SERVICE) < 0)
-    	perror("cap_enable(BIND_SERVICE) failed");
-    	return EXIT_FAILURE;
-    if (cap_enable(CAP_NET_ADMIN) < 0)
-    	perror("cap_enable(NET_ADMIN) failed");
-    	return EXIT_FAILURE;
-    if (cap_enable(CAP_NET_RAW) < 0)
-    	perror("cap_enable(NET_RAW) failed");
-    	return EXIT_FAILURE;
+     =================================================================
+     Running logged in as root (euid=0; ruid=0). Using libcap.
+     Action:
+     Near to start of program: Drop all other capabilities other then
+     NET_RAW and NET_ADMIN by using cap_enable() function.
 
-    if (cap_enable(CAP_DAC_READ_SEARCH) < 0)
-        perror("cap_enable(DAC_READ_SEARCH) failed");
+ 	 CAP_NET_ADMIN: Promiscuous mode and a truckload of other
+                	stuff we don't need (and shouldn't have).
+ 	 CAP_NET_RAW:   Packet capture (raw sockets).
+     =================================================================
     */
+    cap_value_t cap_list[2] = { CAP_NET_ADMIN, CAP_NET_RAW };
+
+    if (cap_enable(cap_list) < 0) return -1;
 
     rdata = (char *)malloc(65535);
 
