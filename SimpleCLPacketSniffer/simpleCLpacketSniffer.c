@@ -7,6 +7,7 @@
   An example program. Shows how to capture data off the wire (an E1/T1)
   and save it to a file (or stdout) in classic PCap format for further
   analysis with e.g. wireshark or tshark.
+  the format frame: 8 bytes (64 bits)
 
   References:
   classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
@@ -343,7 +344,7 @@ void print_usage(){
 int cap_enable(cap_value_t cap_list[]) {
 
     int cl_len = sizeof(cap_list) / sizeof(cap_value_t);
-    cap_t caps = cap_init();    /* all capabilities initialized to off */
+    cap_t caps = cap_init();  S  /* all capabilities initialized to off */
 
     uid_t ruid;
     uid_t euid;
@@ -369,6 +370,8 @@ int cap_enable(cap_value_t cap_list[]) {
 
     /*
      ======================================================
+     Worked thank's to WireShark source code documentation
+
      If we were started with special privileges, set the
      real and effective group and user IDs to the original
      values of the real and effective group and user IDs.
