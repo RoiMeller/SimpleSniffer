@@ -1,9 +1,16 @@
 #if defined(linux) // This program is Linux-specific !
 
 /*
- ============================
+ =========================================================================
   CommandLine Packet Sniffer
- ============================
+
+  An example program. Shows how to capture data off the wire (an E1/T1)
+  and save it to a file (or stdout) in classic PCap format for further
+  analysis with e.g. wireshark or tshark.
+
+  References:
+  classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
+ =========================================================================
 */
 
 /* INCLUDES */
@@ -304,7 +311,7 @@ void print_usage(){
     printf("| Valid arguments [options]:\n");
     printf("| \n");
     printf("| --output <filename>			To save a .pcap file.\n");
-    printf("| --input <path>or<filename>		Specify a pcap file as the input.\n");
+    printf("| --input  <path>or<filename>		Specify a pcap file as the input.\n");
     printf("| --quiet				To suppress output.\n");
     printf("| --rt					To specify realtime mode.\n");
     printf("| \n");
@@ -321,6 +328,7 @@ void print_usage(){
     printf("| --interface, --outerface, --promisc\n");
     printf("| \n");
     printf("| Use Ctrl-C to stop capturing at any time.\n");
+    printf("| \n");
     printf("*********************************** Usage ***********************************\n");
 }
 
@@ -908,6 +916,8 @@ int atoip(const char *pIpStr)
     return t;
 }
 
+/* pcap dump frame: 8 bytes (64 bits) */
+
 /*
  ============================================================================
  brief dump the len bytes pointed to by b to file out.
@@ -1192,7 +1202,7 @@ char DumpPacket(char *buffer, int len, int quiet)
         fflush(stdout);
     }
 
-    return EXIT_SUCCESS;
+    return 1;
 }
 
 /* Definitions and descriptions come from:
@@ -1581,7 +1591,7 @@ int main(int argc, char *argv[])
                 else
                 {
                     printf("UNKNOWN OPTION, %s,%s\n", argv[argc], lastarg);
-                    return EXIT_FAILURE;
+                    print_usage();
                 }
                 lastarg = NULL;
             }
@@ -1599,14 +1609,12 @@ int main(int argc, char *argv[])
     else
     {
         pcap_hdr_t in_pcap_header;
-        sd = open(pcap_fname, O_RDONLY | O_NOCTTY);
+        sd = open(pcap_fname, O_RDWR); // open flag O_RDWR Permits all system calls to be executed.
         if(sd < 1)
             perror("open");
-    		return EXIT_FAILURE;
 
     	if(read(sd, &in_pcap_header, sizeof(in_pcap_header)) < 0)
             perror("read");
-    		return EXIT_FAILURE;
 
         if(in_pcap_header.magic_number == 0xa1b2c3d4)
         {
@@ -1640,7 +1648,7 @@ int main(int argc, char *argv[])
         {
             fprintf(stderr,
                     "Error: Pcap file doesn't have large enough packets.\n");
-        	return EXIT_FAILURE;
+            return EXIT_FAILURE;
         }
 
         if(in_pcap_header.network != 1)
@@ -1666,7 +1674,6 @@ int main(int argc, char *argv[])
 
         if(sl < 0)
             perror("sched_setscheduler");
-        	return EXIT_FAILURE;
     }
 
     if(oface)
@@ -1678,7 +1685,6 @@ int main(int argc, char *argv[])
 
         if(od < 0)
             perror("Sniffer socket-out");
-    		return EXIT_FAILURE;
 
     		memset(&s1, 0, sizeof(struct sockaddr_ll));
     		strcpy((char *)interface_obj.ifr_name, oface);
@@ -1695,7 +1701,6 @@ int main(int argc, char *argv[])
             if(result < 0)
             {
                 perror("Sniffer interface");
-            	return EXIT_FAILURE;
             }
         }
     }
@@ -1719,7 +1724,6 @@ int main(int argc, char *argv[])
 
             if(result < 0) {
                 printf("unable to bind to device.\n");
-            	return EXIT_FAILURE;
             }
 
             else
@@ -1731,7 +1735,6 @@ int main(int argc, char *argv[])
 
                     if(result < 0)
                         printf("unable to set promisc.\n");
-                    	return EXIT_FAILURE;
                 }
             }
         }
