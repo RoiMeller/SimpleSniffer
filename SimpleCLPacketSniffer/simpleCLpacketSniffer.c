@@ -4,9 +4,12 @@
  =========================================================================
   CommandLine Packet Sniffer
 
-  An example program. Shows how to capture data off the wire (an E1/T1)
-  and save it to a file (or stdout) in classic PCap format for further
+  An example program meant as a lightweight tcpdump tool for general
+  purpose sniffing and network traffic analysis.
+
+  save it to a file (or stdout) in classic PCap format for further
   analysis with e.g. wireshark or tshark.
+
   the format frame: 8 bytes (64 bits)
 
   References:
@@ -76,7 +79,7 @@
 #define ETH_ALEN 6
 #endif /*ETH_ALEN*/
 
-/* Export Specified Packets */
+/* FIlter value reference for mask check and set */
 #define ETH_DST_FILTER       0x00000002
 #define ETH_SRC_FILTER       0x00000001
 #define ETH_TYPE_FILTER      0x00000004
@@ -97,8 +100,10 @@ int debug = 0;
 typedef unsigned char uchar;
 typedef unsigned int uint;
 
-/* Filter reference */
+/* Filter mask value for mask check and set */
 uint  filter_mask = 0;
+
+/* Declaration */
 uchar eth_src_is_mac_filter[ETH_ALEN];
 uchar eth_src_not = 0;
 
@@ -404,17 +409,15 @@ int cap_enable(cap_value_t cap_list[]) {
     }
 
     if(cap_set_flag(caps, CAP_PERMITTED,   cl_len, cap_list, CAP_SET) == -1 ){
-    	perror("CAP_PERMITTED fail return");
+    	perror("cap_set_flag() set permitted fail return");
     	return EXIT_FAILURE;
     }
-
     if (cap_set_flag(caps, CAP_INHERITABLE, cl_len, cap_list, CAP_SET) == -1){
-    	perror("CAP_INHERITABLE fail return");
+    	perror("cap_set_flag() set permitted fail return");
     	return EXIT_FAILURE;
     }
-
     if(cap_set_flag(caps, CAP_EFFECTIVE, cl_len, cap_list, CAP_SET) == -1){
-    	perror("CAP_EFFECTIVE fail return");
+    	perror("cap_set_flag() set permitted fail return");
     	return EXIT_FAILURE;
     }
 
@@ -805,8 +808,9 @@ void PrintExtraEtherInfo(struct eth_packet *eth_pkt)
 
 }
 
+/* Defining a parameterized macro */
 #define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b)
-#define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a)
+#define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
 
 unsigned char convertAsciiHexCharToBin(char asciiHexChar)
 {
@@ -1339,6 +1343,7 @@ void pcap_pkt_sleep(struct timeval *pPacketCurrent,
 
 int main(int argc, char *argv[])
 {
+	/* Declaration */
     FILE *pcap_dump_file = NULL;
     pcap_hdr_t pcap_header;
     int sd=-1, od=-1, bytes_read;
@@ -1390,19 +1395,17 @@ int main(int argc, char *argv[])
     	return -1;
     }
 
-
+    /* rdata allocation */
     rdata = (char *)malloc(65535);
 
+    /*  error check for rdata allocation - Prints Out of memory */
     if(!rdata)
     {
-    	/*  error check - Out of memory */
         fprintf(stderr, "Sniffer: OOM\n");
         return EXIT_FAILURE;
     }
 
-    print_usage(); // --help - Help menu
-
-    if(argc > 1)
+    if(argc > 1) // If argument count bigger then 1
     {
         while(--argc)//run on all opening argument
         {
