@@ -1,7 +1,17 @@
+#if defined(linux) // This program is Linux-specific !
+
 /*
- ============================================================================
-  	  	  	  	  	  CommandLine Packet Sniffer
- ============================================================================
+ =========================================================================
+  CommandLine Packet Sniffer
+
+  An example program. Shows how to capture data off the wire (an E1/T1)
+  and save it to a file (or stdout) in classic PCap format for further
+  analysis with e.g. wireshark or tshark.
+  the format frame: 8 bytes (64 bits)
+
+  References:
+  classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
+ =========================================================================
 */
 
 /* INCLUDES */
@@ -29,20 +39,20 @@
 # include <linux/if_packet.h>	//
 # include <sys/ioctl.h>			//
 # include <sched.h>				//
-# include <signal.h>			//
+# include <signal.h>			// POSIX signals
 # include <time.h>				//
-# include <unistd.h>			// Various essential POSIX functions and constants
+# include <unistd.h>			// Various essential POSIX functions and constants - syscall()
 # include <sys/capability.h>	//
-# include <linux/capability.h>  /* _LINUX_CAPABILITY_VERSION */
-
+# include <linux/capability.h>  // _LINUX_CAPABILITY_VERSION
+# include <sys/syscall.h>       // __NR_capget
 # include <netdb.h>				// definitions for network database operations
+# include <linux/prctl.h>
 
 /* Function & Global Declaration */
 
-// ToDo
-/* build UDP header */
-
 # define ERROR_PRINT perror
+# define EXIT_SUCCESS 0
+# define EXIT_FAILURE 1
 
 # ifdef __BYTE_ORDER
 #  if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -151,42 +161,42 @@ typedef enum { eETH_ADDR, eIP_ADDR } EAddress;
 struct ip_packet {
 
 #ifdef __LITTLE_ENDIAN__
-    uint header_len:4;       /* header length in words in 32bit words */
-    uint version:4;          /* 4-bit version */
-#else /*!__LITTLE_ENDIAN__ */
+    uint header_len:4;		/* header length in words in 32bit words */
+    uint version:4;			/* 4-bit version */
+#else	/*!__LITTLE_ENDIAN__ */
     uint version:4;
     uint header_len:4;
-#endif/*!__LITTLE_ENDIAN__ */
-    uint serve_type:8;       /* how to service packet */
-    uint packet_len:16;      /* total size of packet in bytes */
-    uint ID:16;              /* fragment ID */
+#endif	/*!__LITTLE_ENDIAN__ */
+    uint serve_type:8;		/* how to service packet */
+    uint packet_len:16;		/* total size of packet in bytes */
+    uint ID:16;				/* fragment ID */
 #ifdef __LITTLE_ENDIAN__
-    uint frag_offset:13;     /* to help reassemble */
-    uint more_frags:1;       /* flag for "more frags to follow" */
-    uint dont_frag:1;        /* flag to permit fragmentation */
-    uint __reserved:1;       /* always zero */
-#else/*!__LITTLE_ENDIAN__ */
+    uint frag_offset:13;	/* to help reassemble */
+    uint more_frags:1;		/* flag for "more frags to follow" */
+    uint dont_frag:1;		/* flag to permit fragmentation */
+    uint __reserved:1;		/* always zero */
+#else	/*!__LITTLE_ENDIAN__ */
     uint __reserved:1;
     uint more_frags:1;
     uint dont_frag:1;
     uint frag_offset:13;
-#endif/*!__LITTLE_ENDIAN__ */
-    uint time_to_live:8;     /* maximum router hop count */
-    uint protocol:8;         /* ICMP, UDP, TCP */
-    uint hdr_chksum:16;      /* ones-comp. checksum of header */
+#endif	/*!__LITTLE_ENDIAN__ */
+    uint time_to_live:8;	/* maximum router hop count */
+    uint protocol:8;		/* ICMP, UDP, TCP */
+    uint hdr_chksum:16;		/* ones-comp. checksum of header */
 
     union {
         uint  addr:32;
-        uchar IPv4_src[IP_SIZE]; /* IP address of originator */
+        uchar IPv4_src[IP_SIZE];	/* IP address of originator */
     } ip_src;
 
     union {
         uint  addr:32;
-        uchar IPv4_dst[IP_SIZE]; /* IP address of destination */
+        uchar IPv4_dst[IP_SIZE];	/* IP address of destination */
     } ip_dst;
 
-    uchar options[0];        /* up to 40 bytes */
-    uchar data[0];           /* message data up to 64KB */
+    uchar options[0];	/* up to 40 bytes */
+    uchar data[0];		/* message data up to 64KB */
 };
 
 struct tcpudp_port_header {
@@ -297,58 +307,129 @@ void DebugPrint(char *buf){
 }
 
 void print_usage(){
-
-	printf("\n*********************************** Usage ***********************************\n");
+	printf("\n********************* Simple Command Line packetSniffer *********************\n");
 	printf("| \n");
-    printf("| Valid arguments:\n");
+    printf("| Valid arguments [options]:\n");
     printf("| \n");
-    printf("| To save a .pcap file :	--output <filename>\n");
-    printf("| To suppress output :		--quiet\n");
-    printf("| To specify realtime mode :	--rt\n");
+    printf("| --output <filename>			To save a .pcap file.\n");
+    printf("| --input  <path>or<filename>	Specify a pcap file as the input.\n");
+    printf("| --quiet                       To suppress output.\n");
+    printf("| --rt                          To specify realtime mode.\n");
+    printf("| \n");
+    printf("| options:\n");
+    printf("| --vlan-id               \n");
+    printf("| --eth-src   <eth source>             = sniff only from the eth source specified \n");
+    printf("| --eth-dst   <eth destination>        = sniff only from the eth destination specified \n");
+    printf("| --eth-type  <eth type>               = sniff only from the eth type specified \n");
+    printf("| --ip-src    <ip source>              = sniff only from the ip source specified \n");
+    printf("| --ip-dst    <ip destination>         = sniff only from the ip destination specified \n");
+    printf("| --ip-proto  <ip protocol>            = sniff only from the ip protocol specified \n");
+    printf("| --ip-tos    <ip ToS>            	   = sniff only from the ip ToS specified \n");
+    printf("| --ip-sport  <ip source port>         = sniff only from the ip source port specified \n");
+    printf("| --ip-dport  <ip destination port>    = sniff only from the ip destination port specified \n");
     printf("| \n");
     printf("| To specify a negative filter use --not, or ! after the filter type.\n");
-    printf("| ex: --ip-src --not 192.168.1.1\n");
-    printf("| --vlan-id, --eth-src, --eth-dst, --eth-type,\n");
-    printf("| --ip-src, --ip-dst, --ip-proto, --ip-tos, --ip-sport, --ip-dport,\n");
+    printf("| example: --ip-src --not 192.168.1.1\n");
     printf("| \n");
-    printf("| --u8, --u16, --u32 =>		format is <value>:<offset>\n");
-    printf("| --m32 =>			format is <mask>:<offset>\n");
+    printf("| --u8, --u16, --u32				   Format is <value>:<offset>\n");
+    printf("| --m32					               Format is <mask>:<offset>\n");
     printf("| \n");
-    printf("| --input => specify a pcap file as the input\n");
     printf("| --interface, --outerface, --promisc\n");
     printf("| \n");
-    printf("********************* Simple Command Line packetSniffer *********************\n");
+    printf("| Use Ctrl-C to stop capturing at any time.\n");
+    printf("| \n");
+    printf("*********************************** Usage ***********************************\n");
 }
 
-int cap_enable(cap_value_t capflag) {
-	cap_t mycaps;
-	mycaps = cap_get_proc();
+/*
+ ===============================================================
+ If we were linked with libcap (not related to libpcap) and
+ If we started with special privs (ie: suid) then enable for
+ ourself the  NET_ADMIN and NET_RAW capabilities and then
+ drop our suid privileges.
+ ===============================================================
+*/
+int cap_enable(cap_value_t cap_list[]) {
 
-	if (mycaps == NULL)
-		return -1;
-	if (cap_set_flag(mycaps, CAP_EFFECTIVE, 1, &capflag, CAP_SET) != 0)
-		return -1;
-	if (cap_set_proc(mycaps) != 0)
-		return -1;
+    int cl_len = 0 ;
+    cap_t caps = cap_init();   /* all capabilities initialized to off */
 
-	return 0;
-}
+    uid_t ruid;
+    uid_t euid;
+    gid_t rgid;
+    gid_t egid;
 
-int cap_drop(cap_value_t capflag) {
+	ruid = getuid();
+	euid = geteuid();
+	rgid = getgid();
+	egid = getegid();
 
-	cap_t mycaps;
-	mycaps = cap_get_proc();
+	cl_len = sizeof(cap_list) / sizeof(cap_value_t);
 
-	if (mycaps == NULL)
-		return -1;
-	if (cap_set_flag(mycaps, CAP_EFFECTIVE, 1, &capflag, CAP_CLEAR) != 0)
-		return -1;
-	if (cap_set_flag(mycaps, CAP_PERMITTED, 1, &capflag, CAP_CLEAR) != 0)
-		return -1;
-	if (cap_set_proc(mycaps) != 0)
-		return -1;
+	  /*
+	     ======================================================
+	     Worked thank's to WireShark source code documentation
 
-	return 0;
+	     If we were started with special privileges, set the
+	     real and effective group and user IDs to the original
+	     values of the real and effective group and user IDs.
+
+	     (Set the effective UID last - that takes away our
+	     rights to set anything else.)
+	     ======================================================
+	    */
+
+	 /* Real and effective group IDs */
+	if (setgid(rgid) == -1) {
+		perror("setgid");
+		return EXIT_FAILURE;
+	}
+	if (setegid(rgid) == -1) {
+		perror("setegid");
+		return EXIT_FAILURE;
+	}
+
+	/* Real and effective user IDs */
+	if (setuid(ruid) == -1) {
+		perror("setuid");
+		return EXIT_FAILURE;
+	}
+	if (seteuid(ruid) == -1) {
+		perror("seteuid");
+		return EXIT_FAILURE;
+	}
+
+    if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
+    	perror("prctl() fail return");
+    }
+
+    if(cap_set_flag(caps, CAP_PERMITTED,   cl_len, cap_list, CAP_SET) == -1 ){
+    	perror("CAP_PERMITTED fail return");
+    	return EXIT_FAILURE;
+    }
+
+    if (cap_set_flag(caps, CAP_INHERITABLE, cl_len, cap_list, CAP_SET) == -1){
+    	perror("CAP_INHERITABLE fail return");
+    	return EXIT_FAILURE;
+    }
+
+    if(cap_set_flag(caps, CAP_EFFECTIVE, cl_len, cap_list, CAP_SET) == -1){
+    	perror("CAP_EFFECTIVE fail return");
+    	return EXIT_FAILURE;
+    }
+
+    if (cap_set_proc(caps)) {
+    	perror("cap_set_proc() fail return");
+    	return EXIT_FAILURE;
+    }
+
+    printf("After setting: getuid: %d geteuid: %d Capabilities : %s\n", getuid(), geteuid(), cap_to_text(caps, NULL));
+
+    if (cap_free(caps) == -1){
+    	perror("CAP_FREE");
+    	return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
 
 /* used to ensure the integrity of data portions for data transmission */
@@ -496,7 +577,7 @@ int eth_contains_ip(struct eth_packet *eth_pkt) // eth main struct
     else if (ntohs(eth_pkt->eth_type) == ETH_P_IP)
         return 14;
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 int ipcmp(uchar *ipstruct_addr, int addr) // Struct & filtering
@@ -518,9 +599,9 @@ int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr) // // Stru
     for(;i<ETH_ALEN;++i)
     {
         if(filter_addr[i] != retr_addr[i])
-            return 0;
+            return EXIT_SUCCESS;
     }
-    return 1;
+    return EXIT_FAILURE;
 }
 
 int ethtype_cmp(uint retr_type, uint filter_type) // GetEtherType() & filtering
@@ -533,7 +614,7 @@ int ethvlan_cmp(struct eth_packet *eth_pkt, uint vlan_tag)
     struct eth_8021q_packet *q_pkt = (void *)(eth_pkt);
     uint retr_id;
     if(!ethtype_cmp(ntohs(eth_pkt->eth_type), ETH_P_8021Q))
-        return 0;
+        return EXIT_SUCCESS;
 
     retr_id = q_pkt->vlan_id;
 
@@ -546,7 +627,7 @@ int udptcp_sport_cmp(struct ip_packet *ip, uint filter_port)
     struct tcpudp_port_header *hdr = (void *)(buffer + (ip->header_len*4));
     if((ip->protocol != IPPROTO_TCP) &&
        (ip->protocol != IPPROTO_UDP))
-        return 0;
+        return EXIT_SUCCESS;
 
     return (ntohs(hdr->srcPort) == filter_port) ? 1 : 0;
 }
@@ -557,7 +638,7 @@ int udptcp_dport_cmp(struct ip_packet *ip, uint filter_port)
     struct tcpudp_port_header *hdr = (void *)(buffer + (ip->header_len*4));
     if((ip->protocol != IPPROTO_TCP) &&
        (ip->protocol != IPPROTO_UDP))
-        return 0;
+        return EXIT_SUCCESS;
 
     return (ntohs(hdr->dstPort) == filter_port) ? 1 : 0;
 }
@@ -783,7 +864,7 @@ unsigned int ascii_to_bin(char *str_bin)
         {
             free(out);
             free(str);
-            return -1;
+            return EXIT_FAILURE;
         }
         out[outBufIdx] = ((firstNibble<<4)&0xF0) | (secondNibble &0xF);
         outBufIdx++;
@@ -799,7 +880,7 @@ unsigned int ascii_to_bin(char *str_bin)
         {
             free(out);
             free(str);
-            return -1;
+            return EXIT_FAILURE;
         }
         out[outBufIdx] = ((firstNibble<<4)&0xF0)|(secondNibble&0xF);
         outBufIdx++;
@@ -838,7 +919,7 @@ int atoip(const char *pIpStr)
     hints.ai_socktype = SOCK_STREAM;
 
     if(getaddrinfo(pIpStr, NULL, &hints, &servinfo) != 0)
-        return 0;
+        return EXIT_SUCCESS;
 
     for(p = servinfo; p != NULL; p = p->ai_next)
     {
@@ -856,6 +937,8 @@ int atoip(const char *pIpStr)
     freeaddrinfo(servinfo);
     return t;
 }
+
+/* pcap dump frame: 8 bytes (64 bits) */
 
 /*
  ============================================================================
@@ -899,54 +982,54 @@ char DumpPacket(char *buffer, int len, int quiet)
     {
         uint ff = ntohl(*((uint*)(buffer+arbitrary_msk_filter_pos)));
         if(len < arbitrary_msk_filter_pos+4)
-            return -1;
+            return EXIT_FAILURE;
         uchar truth = (FILTER_CHK_MASK(ff, arbitrary_msk_filter));
 
         if(truth)
         {
             if(arbitrary_msk_not)
-                return -1;
+                return EXIT_FAILURE;
         }else if (!truth)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U8_FILTER))
     {
         if(len < arbitrary_u8_filter_pos+1)
-            return -1;
+            return EXIT_FAILURE;
         if((buffer[arbitrary_u8_filter_pos] == arbitrary_u8_filter))
         {
             if(arbitrary_u8_not)
-                return -1;
+                return EXIT_FAILURE;
         }else if (!arbitrary_u8_not)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U16_FILTER))
     {
         if(len < arbitrary_u16_filter_pos+2)
-            return -1;
+            return EXIT_FAILURE;
         if((ntohs(*((ushort*)(buffer+arbitrary_u16_filter_pos))) ==
             arbitrary_u16_filter))
         {
             if(arbitrary_u16_not)
-                return -1;
+                return EXIT_FAILURE;
         }else if(!arbitrary_u16_not)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U32_FILTER))
     {
         if(len < arbitrary_u32_filter_pos+4)
-            return -1;
+            return EXIT_FAILURE;
         if((ntohl(*((uint*)(buffer+arbitrary_u32_filter_pos))) ==
             arbitrary_u32_filter))
         {
             if(arbitrary_u32_not)
-                return -1;
+                return EXIT_FAILURE;
         }
         else if (!arbitrary_u32_not)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     /* filter out the cruft - in userspace I know! */
@@ -955,9 +1038,9 @@ char DumpPacket(char *buffer, int len, int quiet)
         if(ethmask_cmp(eth_pkt->src_mac, eth_src_is_mac_filter))
         {
             if(eth_src_not)
-                return -1;
+                return EXIT_FAILURE;
         }else if(!eth_src_not)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_DST_FILTER))
@@ -965,9 +1048,9 @@ char DumpPacket(char *buffer, int len, int quiet)
         if(ethmask_cmp(eth_pkt->dst_mac, eth_dst_is_mac_filter))
         {
             if(eth_dst_not)
-                return -1;
+                return EXIT_FAILURE;
         }else if (!eth_dst_not)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_TYPE_FILTER))
@@ -975,9 +1058,9 @@ char DumpPacket(char *buffer, int len, int quiet)
         if(ethtype_cmp(ntohs(eth_pkt->eth_type), eth_type_is_filter))
         {
             if(eth_type_not)
-                return -1;
+                return EXIT_FAILURE;
         }else if(!eth_type_not)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_VLAN_FILTER))
@@ -985,9 +1068,9 @@ char DumpPacket(char *buffer, int len, int quiet)
         if(ethvlan_cmp(eth_pkt, eth_vlan_is_filter))
         {
             if(eth_vlan_not)
-                return -1;
+                return EXIT_FAILURE;
         }else if(!eth_vlan_not)
-            return -1;
+            return EXIT_FAILURE;
     }
 
     if(eth_contains_ip(eth_pkt))
@@ -999,9 +1082,9 @@ char DumpPacket(char *buffer, int len, int quiet)
             if(ipcmp(ip->ip_src.IPv4_src, ip_src_is_filter))
             {
                 if(ip_src_not)
-                    return -1;
+                    return EXIT_FAILURE;
             }else if(!ip_src_not)
-                return -1;
+                return EXIT_FAILURE;
         }
 
         if(FILTER_CHK_MASK(filter_mask, IP_DST_FILTER))
@@ -1009,9 +1092,9 @@ char DumpPacket(char *buffer, int len, int quiet)
             if(ipcmp(ip->ip_dst.IPv4_dst, ip_dst_is_filter))
             {
                 if(ip_dst_not)
-                    return -1;
+                    return EXIT_FAILURE;
             }else if(!ip_dst_not)
-                return -1;
+                return EXIT_FAILURE;
         }
 
         if(FILTER_CHK_MASK(filter_mask, IP_TOS_BYTE_FILTER))
@@ -1019,9 +1102,9 @@ char DumpPacket(char *buffer, int len, int quiet)
             if(ip->serve_type == ip_tos_byte_filter)
             {
                 if(ip_tos_byte_filter_not)
-                    return -1;
+                    return EXIT_FAILURE;
             }else if (!ip_tos_byte_filter_not)
-                return -1;
+                return EXIT_FAILURE;
         }
 
         if(FILTER_CHK_MASK(filter_mask, IP_PROTO_FILTER))
@@ -1029,9 +1112,9 @@ char DumpPacket(char *buffer, int len, int quiet)
             if(ip->protocol == ipproto_is_filter)
             {
                 if(ipproto_not)
-                    return -1;
+                    return EXIT_FAILURE;
             }else if (!ipproto_not)
-                return -1;
+                return EXIT_FAILURE;
         }
 
         if(FILTER_CHK_MASK(filter_mask, UDP_TCP_SPORT_FILTER))
@@ -1039,9 +1122,9 @@ char DumpPacket(char *buffer, int len, int quiet)
             if(udptcp_sport_cmp(ip, udp_tcp_sport_is_filter))
             {
                 if(udp_tcp_sport_not)
-                    return -1;
+                    return EXIT_FAILURE;
             }else if(!udp_tcp_sport_not)
-                return -1;
+                return EXIT_FAILURE;
         }
 
         if(FILTER_CHK_MASK(filter_mask, UDP_TCP_DPORT_FILTER))
@@ -1049,14 +1132,14 @@ char DumpPacket(char *buffer, int len, int quiet)
             if(!udptcp_sport_cmp(ip, udp_tcp_dport_is_filter))
             {
                 if(udp_tcp_dport_not)
-                    return -1;
+                    return EXIT_FAILURE;
             }else if(!udp_tcp_dport_not)
-                return -1;
+                return EXIT_FAILURE;
         }
     }
 
     if(!eth_contains_ip(eth_pkt) && need_IP == 1)
-        return -1;
+        return EXIT_FAILURE;
 
     if(quiet)
     {
@@ -1231,7 +1314,7 @@ int sniff_nano_sleep(const struct timespec *req, struct timespec *remain)
         sniff_nano_sleep(remain, &_remainder);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 void pcap_pkt_sleep(struct timeval *pPacketCurrent,
@@ -1283,32 +1366,56 @@ int main(int argc, char *argv[])
     signal(SIGTERM, &terminate_hnd); // The SIGTERM signal is sent to a process to request its termination.
     signal(SIGINT, &terminate_hnd); // The SIGINT signal is sent to a process by its controlling terminal when a user wishes to interrupt the process.
 
+    /* Determine if process is running as root */
+    if (getuid() != 0) {
+		printf("This program must run as root\n");
+		return EXIT_FAILURE;
+	}
+
+    /*
+     =================================================================
+     Running logged in as root (euid=0; ruid=0). Using libcap.
+     Action:
+     Near to start of program: Drop all other capabilities other then
+     NET_RAW and NET_ADMIN by using cap_enable() function.
+
+ 	 CAP_NET_ADMIN: Promiscuous mode and a truckload of other
+                	stuff we don't need (and shouldn't have).
+ 	 CAP_NET_RAW:   Packet capture (raw sockets).
+     =================================================================
+    */
+    cap_value_t cap_list[2] = { CAP_NET_ADMIN, CAP_NET_RAW };
+
+    if (cap_enable(cap_list) < 0) {
+    	return -1;
+    }
+
+
     rdata = (char *)malloc(65535);
 
     if(!rdata)
     {
     	/*  error check - Out of memory */
         fprintf(stderr, "Sniffer: OOM\n");
-        return -1;
+        return EXIT_FAILURE;
     }
 
-    print_usage(); // Help menu
+    print_usage(); // --help - Help menu
 
     if(argc > 1)
     {
-        while(--argc)
+        while(--argc)//run on all opening argument
         {
-            if(strncmp("--", argv[argc], 2)) // check for valid opening argument
-            {
-                if(strcmp("!", argv[argc])) // ???
+            if(strncmp("--", argv[argc], 2)){ // check for valid opening argument
+
+                if(strcmp("!", argv[argc])){ // check for NOT option in opening argument
                     lastarg = argv[argc];
-                else
+                }else{
                     notflag = 1;
-            }
-            else
-            {
-                if((lastarg == NULL) && strchr(argv[argc],'=')) // ???
-                {
+                }
+            }else{
+
+                if((lastarg == NULL) && strchr(argv[argc],'=')){ // ???
                     lastarg = strchr(argv[argc],'=');
                     ++lastarg;
                 }
@@ -1319,43 +1426,37 @@ int main(int argc, char *argv[])
                     notflag = 1;
                 }
 
-                if(!strncmp("--help", argv[argc], 6)) // NEED TO IMPLICATE WITH FUNCTION
-                {
+                if(!strncmp("--help", argv[argc], 6)){ // print CL options
                 	print_usage();
+                	return EXIT_SUCCESS;
                 }
 
-                else if(!strncmp("--quiet", argv[argc], 7)) /* CHOOSE RETHEAR TO QUIET PROGRAM ? */
-                {
+                else if(!strncmp("--quiet", argv[argc], 7)){ /* CHOOSE RETHEAR TO keep the QUIET option ? */
                     display=0;
                 }
 
-                else if(!strncmp("--interface", argv[argc], 11) &&
-                        lastarg != NULL)
-                {
+                else if(!strncmp("--interface", argv[argc], 11) && lastarg != NULL){
                     iface = lastarg;
                 }
-                else if(!strncmp("--outerface", argv[argc], 11) &&
-                        lastarg != NULL)
-                {
+
+                else if(!strncmp("--outerface", argv[argc], 11) && lastarg != NULL){
                     oface = lastarg;
                 }
-                else if(!strncmp("--promisc", argv[argc], 11)) /* allows the interface to receive all packets that it sees whether they are addressed to the interface or not */
-                {
+
+                /* allows the interface to receive all packets that it sees whether they are addressed to the interface or not */
+                else if(!strncmp("--promisc", argv[argc], 11)){
                     promisc = 1;
                 }
-                else if(!strncmp("--rt", argv[argc], 4)) /* RealTime */
-                {
+                else if(!strncmp("--rt", argv[argc], 4)){/* RealTime */
                     rt = 1;
                 }
 
-                else if(!strncmp("--input", argv[argc], 7) && lastarg != NULL)
-                {
+                else if(!strncmp("--input", argv[argc], 7) && lastarg != NULL){
                     pcap_input = 1;
                     pcap_fname = lastarg;
                     notflag = 0;
                 }
-                else if(!strncmp("--not", argv[argc], 5) && lastarg != NULL)
-                {
+                else if(!strncmp("--not", argv[argc], 5) && lastarg != NULL){
                     notflag = 1;
                     continue;
                 }
@@ -1363,12 +1464,13 @@ int main(int argc, char *argv[])
                 {
                     printf("Sniffer start pcap execution...\n");
                     pcap_dump_file = fopen(lastarg, "w+");
-                    if(pcap_dump_file == NULL)
-                    {
+
+                    if(pcap_dump_file == NULL) {
                         printf("unable to save pcap file. aborting.\n");
                         perror("fopen");
-                        return -1;
+                        return EXIT_FAILURE;
                     }
+
                     pcap_header.magic_number  = 0xa1b2c3d4;
                     pcap_header.version_major = 2;
                     pcap_header.version_minor = 4;
@@ -1376,94 +1478,82 @@ int main(int argc, char *argv[])
                     pcap_header.sigfigs       = 0;
                     pcap_header.snaplen       = 65535;
                     pcap_header.network       = 1;
-                    fwrite((void *)&pcap_header, sizeof(pcap_header), 1,
-                           pcap_dump_file);
+
+                    fwrite((void *)&pcap_header, sizeof(pcap_header), 1,pcap_dump_file);
                     fflush(pcap_dump_file);
                     notflag = 0;
                 }
-                else if(!strncmp("--vlan-id", argv[argc], 9) &&
-                        lastarg != NULL)
-                {
+                else if(!strncmp("--vlan-id", argv[argc], 9) && lastarg != NULL){
                     FILTER_SET_MASK(filter_mask, ETH_VLAN_FILTER);
                     eth_vlan_is_filter = strtol(lastarg,NULL,0);
                     if(notflag) eth_vlan_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--eth-src", argv[argc], 9) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--eth-src", argv[argc], 9) && lastarg != NULL){
                     FILTER_SET_MASK(filter_mask, ETH_SRC_FILTER);
                     memcpy(infomercial, lastarg, 12);
                     ascii_to_bin(infomercial);
                     memcpy(eth_src_is_mac_filter, infomercial, 6);
                     if(notflag) eth_src_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--eth-dst", argv[argc], 9) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--eth-dst", argv[argc], 9) && lastarg != NULL){
                     FILTER_SET_MASK(filter_mask, ETH_DST_FILTER);
                     memcpy(infomercial, lastarg, 12);
                     ascii_to_bin(infomercial);
                     memcpy(eth_dst_is_mac_filter, infomercial, 6);
                     if(notflag) eth_dst_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--eth-type", argv[argc], 10) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--eth-type", argv[argc], 10) && lastarg != NULL){
                     FILTER_SET_MASK(filter_mask, ETH_TYPE_FILTER);
                     eth_type_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag) eth_type_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--ip-src", argv[argc], 7) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--ip-src", argv[argc], 7) && lastarg != NULL){
                     need_IP = 1;
                     FILTER_SET_MASK(filter_mask, IP_SRC_FILTER);
                     ip_src_is_filter = atoip(lastarg);
                     if(notflag) ip_src_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--ip-dst", argv[argc], 7) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--ip-dst", argv[argc], 7) &&lastarg != NULL){
                     need_IP = 1;
                     FILTER_SET_MASK(filter_mask, IP_DST_FILTER);
                     ip_dst_is_filter = atoip(lastarg);
                     if(notflag) ip_dst_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--ip-tos", argv[argc], 8) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--ip-tos", argv[argc], 8) &&lastarg != NULL){
                     need_IP = 1;
                     FILTER_SET_MASK(filter_mask, IP_TOS_BYTE_FILTER);
                     ip_tos_byte_filter = strtol(lastarg, NULL, 0);
                     if(notflag) ip_tos_byte_filter_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--ip-proto", argv[argc], 10) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--ip-proto", argv[argc], 10) && lastarg != NULL){
                     need_IP = 1;
                     FILTER_SET_MASK(filter_mask, IP_PROTO_FILTER);
                     ipproto_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag) ipproto_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--ip-sport", argv[argc], 10) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--ip-sport", argv[argc], 10) && lastarg != NULL){
                     need_IP = 1;
                     FILTER_SET_MASK(filter_mask, UDP_TCP_SPORT_FILTER);
                     udp_tcp_sport_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag) udp_tcp_sport_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--ip-dport", argv[argc], 10) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--ip-dport", argv[argc], 10) && lastarg != NULL){
                     need_IP = 1;
                     FILTER_SET_MASK(filter_mask, UDP_TCP_DPORT_FILTER);
                     udp_tcp_dport_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag) udp_tcp_dport_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--u8", argv[argc], 10) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--u8", argv[argc], 10) && lastarg != NULL){
                     char *fpos = NULL;
                     FILTER_SET_MASK(filter_mask, ARBITRARY_U8_FILTER);
                     arbitrary_u8_filter = (uchar)strtoul(lastarg, &fpos, 0);
@@ -1471,9 +1561,8 @@ int main(int argc, char *argv[])
                         arbitrary_u8_filter_pos = strtoul(fpos+1, NULL, 0);
                     if(notflag) arbitrary_u8_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--u16", argv[argc], 10) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--u16", argv[argc], 10) && lastarg != NULL){
                     char *fpos = NULL;
                     FILTER_SET_MASK(filter_mask, ARBITRARY_U16_FILTER);
                     arbitrary_u16_filter = (ushort)strtoul(lastarg, &fpos, 0);
@@ -1481,9 +1570,8 @@ int main(int argc, char *argv[])
                         arbitrary_u16_filter_pos = strtoul(fpos+1, NULL, 0);
                     if(notflag) arbitrary_u16_not = 1;
                     notflag = 0;
-                } else if(!strncmp("--u32", argv[argc], 10) &&
-                          lastarg != NULL)
-                {
+                }
+                else if(!strncmp("--u32", argv[argc], 10) &&lastarg != NULL){
                     char *fpos = NULL;
                     FILTER_SET_MASK(filter_mask, ARBITRARY_U32_FILTER);
                     arbitrary_u32_filter = (uint)strtoul(lastarg, &fpos, 0);
@@ -1492,21 +1580,23 @@ int main(int argc, char *argv[])
                     if(notflag) arbitrary_u32_not = 1;
                     notflag = 0;
                 }
-                else if(!strncmp("--m32", argv[argc], 10) &&
-                        lastarg != NULL)
-                {
+                else if(!strncmp("--m32", argv[argc], 10) && lastarg != NULL){
                     char *fpos = NULL;
                     FILTER_SET_MASK(filter_mask, ARBITRARY_MSK_FILTER);
                     arbitrary_msk_filter = (uint)strtoul(lastarg, &fpos, 0);
-                    if(fpos)
+                    if(fpos){
                         arbitrary_msk_filter_pos = strtoul(fpos+1, NULL, 0);
-                    if(notflag) arbitrary_msk_not = 1;
+                    }
+                    if(notflag){
+                    	arbitrary_msk_not = 1;
+                    }
                     notflag = 0;
                 }
                 else
                 {
                     printf("UNKNOWN OPTION, %s,%s\n", argv[argc], lastarg);
-                    return -1;
+                    print_usage();
+                    return EXIT_SUCCESS;
                 }
                 lastarg = NULL;
             }
@@ -1517,25 +1607,24 @@ int main(int argc, char *argv[])
     {
         /*doesn't work with OS X*/
         sd = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
-        if ( sd < 0 )
+        if ( sd < 0 ){
             perror("Sniffer - socket");
-    }
-
-    else
-    {
+        }
+    } else {//writing for pcap output
         pcap_hdr_t in_pcap_header;
-        sd = open(pcap_fname, O_RDONLY | O_NOCTTY);
-        if(sd < 1)
+        sd = open(pcap_fname, O_RDWR); // open flag O_RDWR Permits all system calls to be executed.
+        if(sd < 1){
             perror("open");
-        if(read(sd, &in_pcap_header, sizeof(in_pcap_header)) < 0)
+        }
+    	if(read(sd, &in_pcap_header, sizeof(in_pcap_header)) < 0){
             perror("read");
+    	}
 
-        if(in_pcap_header.magic_number == 0xa1b2c3d4)
-        {
+        if(in_pcap_header.magic_number == 0xa1b2c3d4){
             /* we don't need to byteswap the packet info. */
         }
-        else if (in_pcap_header.magic_number == 0xd4c3b2a1)
-        {
+        else if (in_pcap_header.magic_number == 0xd4c3b2a1){
+
             pcap_byteswap = 1 ;
             in_pcap_header.version_major =
                 endian_swap_16(in_pcap_header.version_major);
@@ -1549,26 +1638,22 @@ int main(int argc, char *argv[])
                 endian_swap_32(in_pcap_header.snaplen);
             in_pcap_header.network       =
                 endian_swap_32(in_pcap_header.network);
-        }
-        else
-        {
-            fprintf(stderr,
-                    "ERROR: Pcap file corrupt / bad magic number [%X]\n",
-                    in_pcap_header.magic_number);
-            return -1;
+        }else{
+            fprintf(stderr,"ERROR: Pcap file corrupt / bad magic number [%X]\n",in_pcap_header.magic_number);
+        	return EXIT_FAILURE;
         }
 
         if(in_pcap_header.snaplen < 96)
         {
             fprintf(stderr,
                     "Error: Pcap file doesn't have large enough packets.\n");
-            return -1;
+            return EXIT_FAILURE;
         }
 
         if(in_pcap_header.network != 1)
         {
             fprintf(stderr, "Error: Sniffer only works on ethernet caps.\n");
-            return -1;
+        	return EXIT_FAILURE;
         }
 
         printf("pcap info:\n");
@@ -1585,6 +1670,7 @@ int main(int argc, char *argv[])
         pid_t pid = getpid();
         sp.sched_priority = 77; /* - magic number - a high priority */
         sl = sched_setscheduler(pid, SCHED_FIFO, &sp);
+
         if(sl < 0)
             perror("sched_setscheduler");
     }
@@ -1595,16 +1681,17 @@ int main(int argc, char *argv[])
         struct ifreq interface_obj;
         int result;
         od = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
+
         if(od < 0)
             perror("Sniffer socket-out");
 
-        memset(&s1, 0, sizeof(struct sockaddr_ll));
-        strcpy((char *)interface_obj.ifr_name, oface);
+    		memset(&s1, 0, sizeof(struct sockaddr_ll));
+    		strcpy((char *)interface_obj.ifr_name, oface);
 
-        result = ioctl(sd, SIOCGIFINDEX, &interface_obj);
-        if(result >= 0)
-        {
-            result = interface_obj.ifr_ifindex;
+    		result = ioctl(sd, SIOCGIFINDEX, &interface_obj);
+
+    	if(result >= 0) {
+    		result = interface_obj.ifr_ifindex;
             s1.sll_family = SOCK_FAM_TYPE;
             s1.sll_ifindex = result;
             s1.sll_protocol = SOCK_PROTO_TYPE;
@@ -1619,7 +1706,6 @@ int main(int argc, char *argv[])
 
     if(iface)
     {
-    	if (cap_drop(CAP_DAC_READ_SEARCH) < 0) return -1;
         struct sockaddr_ll s1;
         struct ifreq interface_obj;
         int result;
@@ -1627,23 +1713,25 @@ int main(int argc, char *argv[])
         strcpy((char *)interface_obj.ifr_name, iface);
 
         result = ioctl(sd, SIOCGIFINDEX, &interface_obj);
-        if(result >= 0)
-        {
-            result = interface_obj.ifr_ifindex;
+
+        if(result >= 0) {
+        	result = interface_obj.ifr_ifindex;
             s1.sll_family = SOCK_FAM_TYPE;
             s1.sll_ifindex = result;
             s1.sll_protocol = SOCK_PROTO_TYPE;
             result = bind(sd, (struct sockaddr *)&s1, sizeof(s1));
-            if(result < 0)
-            {
+
+            if(result < 0) {
                 printf("unable to bind to device.\n");
             }
+
             else
             {
                 if(promisc && ((interface_obj.ifr_flags & IFF_PROMISC) != IFF_PROMISC))
                 {
                     interface_obj.ifr_flags |= IFF_PROMISC;
                     result = ioctl(sd, SIOCSIFFLAGS, &interface_obj);
+
                     if(result < 0)
                         printf("unable to set promisc.\n");
                 }
@@ -1684,6 +1772,7 @@ int main(int argc, char *argv[])
                 bytes_read = 0; run = 0;
                 continue;
             }
+
             if(pcap_byteswap)
             {
                 pcap_rec.ts_sec = endian_swap_32(pcap_rec.ts_sec);
@@ -1705,6 +1794,7 @@ int main(int argc, char *argv[])
         if ( bytes_read > 0 )
         {
             res = DumpPacket(data, bytes_read, display);
+
             if(pcap_dump_file && res == 1)
             {
                 pcaprec_hdr_t pcap_hdr;
@@ -1748,5 +1838,17 @@ int main(int argc, char *argv[])
     if(pcap_dump_file)
         fclose(pcap_dump_file);
 
-    return 0;
+    return EXIT_SUCCESS;
 }
+
+#else
+
+#include <stdio.h>
+
+int main() {
+	fprintf(stderr, "This program is Linux-specific\n");
+	return 0;
+}
+
+#endif
+

@@ -1,7 +1,9 @@
+#if defined(linux) // This program is Linux-specific !
+
 /*
- ============================================================================
- 	 	 	 	 	 	 	 	Packet Sniffer
- ============================================================================
+ ================
+  Packet Sniffer
+ ================
 */
 
 /* INCLUDES */
@@ -264,3 +266,15 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
+#else
+
+#include <stdio.h>
+
+int main() {
+	fprintf(stderr, "This program is Linux-specific\n");
+	return 0;
+}
+
+#endif
+
