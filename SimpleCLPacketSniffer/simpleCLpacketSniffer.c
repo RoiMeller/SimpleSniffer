@@ -1,29 +1,45 @@
 #if defined(linux) // This program is Linux-specific !
 
-/*
- =========================================================================
-  CommandLine Packet Sniffer
+	/*
+	=====================================================================================
+  	Simple CommandLine Packet Sniffer
 
-  An example program meant as a lightweight tcpdump tool for general
-  purpose sniffing and network traffic analysis.
+  	An example program meant as a lightweight tcpdump tool for general
+	purpose sniffing and network traffic analysis.
 
-  save it to a file (or stdout) in classic PCap format for further
-  analysis with e.g. wireshark or tshark.
+	filtering based on:
+	Ethernet mac addresses
+	Ethernet types
+	Ethernet vlan tags
+	IP addresses
+	IP protocol
+	IP TOS byte
+	TCP/UDP ports
+	Arbitrary 8-bit, 16-bit, and 32-bit fields at offsets
+	Arbitrary 32-bit mask at offset
+	Negative versions of the above
+	Interface restricted captures
+	PCAP file output
+	PCAP file input
+	Dumping selected packets on an interface
 
-  the format frame: 8 bytes (64 bits)
+	Simple CL Packet Sniffer has the ability to take an input as either a pcap file,
+	or a local interface, and output to one or both of a pcap file and an interface.
 
-  References:
-  classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
- =========================================================================
-*/
+  	the format frame: 8 bytes (64 bits)
+
+  	References:
+  	classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
+	=====================================================================================
+	 */
 
 /* INCLUDES */
 
 # include <stdio.h> 			// For standard things
-# include <stdint.h>
+# include <stdint.h>			// Declare sets of integer types having specified widths, and shall define corresponding sets of macros.
 # include <sys/param.h> 		// Old-style Unix parameters and limits
 # include <sys/socket.h> 		// Declarations of socket constants, types, and functions
-# include <arpa/inet.h>
+# include <arpa/inet.h>			// uint32_t and uint16_t
 # include <net/ethernet.h> 		// For ether_header
 # include <errno.h>				// Defines macros for reporting and retrieving error conditions
 # include <sys/types.h>			// Various data types
@@ -35,9 +51,9 @@
 # include <unistd.h>			// provides access to the POSIX operating system API
 # include <fcntl.h>				// File opening, locking and other operations
 # include <sys/select.h>		// Define the timeval structure
-# include <sys/time.h>			//
-# include <features.h>			//
-# include <linux/if.h>			//
+# include <sys/time.h>			// Time types
+# include <features.h>
+# include <linux/if.h>			// An implementation of the TCP/IP protocol
 # include <linux/if_ether.h>	//
 # include <linux/if_packet.h>	//
 # include <sys/ioctl.h>			//
@@ -69,12 +85,9 @@
 #  endif /* __BYTE_ORDER */
 # endif
 
+/* Socket descriptor definition */
 # define SOCK_FAM_TYPE PF_PACKET /* packet interface on device level - Every packet */
 # define SOCK_PROTO_TYPE htons(ETH_P_ALL) /* Host byte order to network byte order */
-
-/* Defining a parameterized macro */
-#define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b)
-#define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
 
 # define IP_SIZE  4
 
@@ -82,6 +95,10 @@
 #ifndef ETH_ALEN
 #define ETH_ALEN 6
 #endif /*ETH_ALEN*/
+
+/* Defining a parameterized macro */
+#define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b)
+#define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
 
 /* FIlter value reference for mask check and set */
 #define ETH_DST_FILTER       0x00000002
@@ -405,7 +422,7 @@ inline unsigned short endian_swap_16(unsigned short x){ /* PCAP Header BYTEORDER
 }
 
 void print_usage(){
-	printf("\n********************* Simple Command Line packetSniffer *********************\n");
+	printf("\n************************************ Simple Command Line packetSniffer ************************************\n");
 	printf("| \n");
     printf("| Valid arguments [options]:\n");
     printf("| \n");
@@ -437,7 +454,7 @@ void print_usage(){
     printf("| \n");
     printf("| Use Ctrl-C to stop capturing at any time.\n");
     printf("| \n");
-    printf("*********************************** Usage ***********************************\n");
+    printf("************************************************** Usage **************************************************\n");
 }
 
 /*
@@ -451,6 +468,7 @@ void print_usage(){
 int cap_enable(cap_value_t cap_list[]) {
 
     int cl_len = 0 ;
+
     cap_t caps = cap_init();   /* all capabilities initialized to off */
 
     uid_t ruid;
@@ -497,10 +515,6 @@ int cap_enable(cap_value_t cap_list[]) {
 		perror("seteuid");
 		return EXIT_FAILURE;
 	}
-
-    if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
-    	perror("prctl() fail return");
-    }
 
     if(cap_set_flag(caps, CAP_PERMITTED,   cl_len, cap_list, CAP_SET) == -1 ){
     	perror("cap_set_flag() set permitted fail return");
@@ -1232,8 +1246,10 @@ char DumpPacket(char *buffer, int len, int quiet)
         PrintExtraEtherInfo(eth_pkt);
 
         if(eth_contains_ip(eth_pkt)){
-            tcph = NULL;
+
+        	tcph = NULL;
             udph = NULL;
+
             if(ip->protocol == 0x06){
                 buffer = buffer + eth_contains_ip(eth_pkt);
                 buffer = buffer + (ip->header_len * 4);
@@ -1257,6 +1273,7 @@ char DumpPacket(char *buffer, int len, int quiet)
             PrintAddr("source=", ip->ip_src.IPv4_src, eIP_ADDR);
             PrintAddr(", destination=", ip->ip_dst.IPv4_dst, eIP_ADDR);
             printf("\n");
+
             if(tcph){
                 printf("TCP Flags: ");
                 if(tcph->options.flags.urg){
@@ -1286,7 +1303,7 @@ char DumpPacket(char *buffer, int len, int quiet)
                        ntohs(tcph->dstPort));
             }
             else if (udph){
-                unsigned short cksum;
+            	unsigned short cksum;
                 printf("[UDP] transport layer cksum=%x", udph->cksum);
                 cksum = udph->cksum;
                 udph->cksum = 0;
@@ -1334,11 +1351,9 @@ void pcap_pkt_sleep(struct timeval *pPacketCurrent,struct timeval *pPacketLast){
 }
 
 int main(int argc, char *argv[]){
+
 	/* Declaration */
     FILE *pcap_dump_file = NULL;
-    pcap_hdr_t pcap_header;
-    pcaprec_hdr_t pcap_rec;
-    pcaprec_hdr_t pcap_hdr;
 
     int sd=-1, od=-1, bytes_read;
     int display = 1, out_phy;
@@ -1367,6 +1382,10 @@ int main(int argc, char *argv[]){
     struct timeval tv;
     struct timeval rcvtime;
 
+    pcap_hdr_t pcap_header;
+    pcaprec_hdr_t pcap_rec;
+    pcaprec_hdr_t pcap_hdr;
+
     pid_t pid = 0 ;
 
     fd_set readfd;
@@ -1374,16 +1393,14 @@ int main(int argc, char *argv[]){
     uchar notflag = 0;
     uint sl;
 
-    cap_value_t cap_list[2] = { CAP_NET_ADMIN, CAP_NET_RAW };
-
     /*
-     =================================================================
- 	 CAP_NET_ADMIN: Promiscuous mode and a truckload of other
-                	stuff we don't need (and shouldn't have).
- 	 CAP_NET_RAW:   Packet capture (raw sockets).
-     =================================================================
+	=================================================================
+	CAP_NET_ADMIN: Promiscuous mode and a truckload of other
+				   stuff we don't need (and shouldn't have).
+	CAP_NET_RAW:   Packet capture (raw sockets).
+	=================================================================
     */
-
+    cap_value_t cap_list[2] = { CAP_NET_ADMIN, CAP_NET_RAW };
 
     /* POSIX signals */
     signal(SIGABRT, &terminate_hnd); // The SIGABRT signal is sent to a process to tell it to abort, i.e. to terminate.
@@ -1411,14 +1428,14 @@ int main(int argc, char *argv[]){
     /* rdata allocation */
     rdata = (char *)malloc(65535);
 
-    /*  error check for rdata allocation - Prints Out of memory */
+    /*  error check for rdata allocation */
     if(!rdata){
-        fprintf(stderr, "Sniffer: OOM\n");
+        fprintf(stderr, "Sniffer: OOM\n"); // Prints Out of memory
         return EXIT_FAILURE;
     }
 
     if(argc > 1){ // If argument count bigger then 1
-        while(--argc){//run on all opening argument
+        while(--argc){ //run on all opening argument
             if(strncmp("--", argv[argc], 2)){ // check for valid opening argument
                 if(strcmp("!", argv[argc])){ // check for NOT option in opening argument
                     lastarg = argv[argc];
@@ -1643,13 +1660,17 @@ int main(int argc, char *argv[]){
     if(!pcap_input){
         /*doesn't work with OS X*/
         sd = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
+
         if ( sd < 0 ){
             perror("Sniffer - socket");
             return EXIT_FAILURE;
         }
     } else {//writing for pcap output
-        pcap_hdr_t in_pcap_header;
+
         sd = open(pcap_fname, O_RDWR); // open flag O_RDWR Permits all system calls to be executed.
+
+        pcap_hdr_t in_pcap_header;
+
         if(sd < 1){
             perror("open");
             return EXIT_FAILURE;
@@ -1660,7 +1681,7 @@ int main(int argc, char *argv[]){
     	}
 
         if(in_pcap_header.magic_number == 0xa1b2c3d4){
-            /* we don't need to byteswap the packet info. */
+        /* we don't need to byteswap the packet info. */
         }
         else if (in_pcap_header.magic_number == 0xd4c3b2a1){
 
@@ -1713,10 +1734,10 @@ int main(int argc, char *argv[]){
             return EXIT_FAILURE;
         }
 
-    		memset(&s1, 0, sizeof(struct sockaddr_ll));
-    		strcpy((char *)interface_obj.ifr_name, oface);
+    	memset(&s1, 0, sizeof(struct sockaddr_ll));
+    	strcpy((char *)interface_obj.ifr_name, oface);
 
-    		result = ioctl(sd, SIOCGIFINDEX, &interface_obj);
+    	result = ioctl(sd, SIOCGIFINDEX, &interface_obj);
 
     	if(result >= 0) {
     		result = interface_obj.ifr_ifindex;
@@ -1839,12 +1860,10 @@ int main(int argc, char *argv[]){
             perror("Sniffer read");
             return EXIT_FAILURE;
         }
-
-
     }
     while (run && bytes_read > 0 );
 
-    printf("\nterminating...\n");
+    printf("\nTerminating...\n");
 
     if(pcap_dump_file){
         fclose(pcap_dump_file);
