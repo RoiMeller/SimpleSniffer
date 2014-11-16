@@ -100,13 +100,8 @@
 #define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b)
 #define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
 
-/* the following defines are taken from if_ether.h
- * credit must be given to:
- * Author:      Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
- *              Donald Becker, <becker@super.org>
- *              Alan Cox, <alan@redhat.com>
- *              Steve Whitehouse, <gw7rrm@eeshack3.swan.ac.uk>
- */
+/* the following defines are taken from if_ether.h */
+
 # define ETH_P_IP        0x0800          /* Internet Protocol packet     */
 # define ETH_P_X25       0x0805          /* CCITT X.25                   */
 # define ETH_P_ARP       0x0806          /* Address Resolution packet    */
@@ -137,11 +132,9 @@
 # define ETH_P_MPLS_MC   0x8848          /* MPLS Multicast traffic       */
 # define ETH_P_ATMMPOA   0x884c          /* MultiProtocol Over ATM       */
 # define ETH_P_ATMFATE   0x8884          /* Frame-based ATM Transport
-                                          * over Ethernet
-                                         */
+                                          * over Ethernet                                         */
 # define ETH_P_AOE       0x88A2          /* ATA over Ethernet            */
 # define ETH_P_TIPC      0x88CA          /* TIPC                         */
-
 
 /* FIlter value reference for mask check and set */
 #define ETH_DST_FILTER       0x00000002
