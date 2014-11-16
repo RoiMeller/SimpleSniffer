@@ -733,7 +733,7 @@ char *GetEtherType(int eth_type)
 }
 
 int eth_contains_ip(struct eth_packet *eth_pkt){ // eth main struct
-    if(ntohs(eth_pkt->eth_type) == ETH_P_38021Q){
+    if(ntohs(eth_pkt->eth_type) == ETH_P_8021Q){
         return 18;
     }else if (ntohs(eth_pkt->eth_type) == ETH_P_IP){
         return 14;
