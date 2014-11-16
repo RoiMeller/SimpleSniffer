@@ -71,7 +71,7 @@
 
 # define ERROR_PRINT perror
 # define EXIT_SUCCESS 0
-# define EXIT_FAILURE 1
+# define EXIT_FAILURE -1
 
 # ifdef __BYTE_ORDER
 #  if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -97,7 +97,7 @@
 #endif /*ETH_ALEN*/
 
 /* Defining a parameterized macro */
-#define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b)
+#define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b) // The function check for mask value in mask filter
 #define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
 
 /* the following defines are taken from if_ether.h */
@@ -691,7 +691,7 @@ void PrintAddr(char* msg, unsigned char *addr, EAddress is_ip) {
 	char buf[8192] = {0};
 
     WriteAddr(buf, 8192, msg, addr, is_ip);
-    printf(buf);
+    printf("%s", buf);
 }
 
 /* <netinet/in.h> Standard well-defined IP protocols. */
@@ -734,19 +734,19 @@ char *GetEtherType(int eth_type)
 
 int eth_contains_ip(struct eth_packet *eth_pkt){ // eth main struct
     if(ntohs(eth_pkt->eth_type) == ETH_P_8021Q){
-        return 18;
+        return 19;
     }else if (ntohs(eth_pkt->eth_type) == ETH_P_IP){
-        return 14;
+        return 15;
     }
 
-    return EXIT_SUCCESS;
+    return 1;
 }
 
 int ipcmp(uchar *ipstruct_addr, int addr){ // Struct & filtering
 
 	int ipstr_addr = *((int*)ipstruct_addr);
 
-    return (addr) ? ((addr == ipstr_addr) ? 1 : 0) : 1;
+    return (addr) ? ((addr == ipstr_addr) ? 1 : 0) : 0;
 }
 
 int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr){ // // Struct & filtering
@@ -761,7 +761,7 @@ int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr){ // // Str
 }
 
 int ethtype_cmp(uint retr_type, uint filter_type){ // GetEtherType() & filtering
-    return (retr_type == filter_type) ? 1 : 0;
+    return (retr_type == filter_type) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 int ethvlan_cmp(struct eth_packet *eth_pkt, uint vlan_tag){
@@ -774,7 +774,7 @@ int ethvlan_cmp(struct eth_packet *eth_pkt, uint vlan_tag){
 
     retr_id = q_pkt->vlan_id;
 
-    return (ntohs(retr_id) == vlan_tag) ? 1 : 0;
+    return (ntohs(retr_id) == vlan_tag) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 int udptcp_sport_cmp(struct ip_packet *ip, uint filter_port){
@@ -785,7 +785,7 @@ int udptcp_sport_cmp(struct ip_packet *ip, uint filter_port){
         return EXIT_SUCCESS;
     }
 
-    return (ntohs(hdr->srcPort) == filter_port) ? 1 : 0;
+    return (ntohs(hdr->srcPort) == filter_port) ? 0 : -1;
 }
 
 int udptcp_dport_cmp(struct ip_packet *ip, uint filter_port){
@@ -796,7 +796,7 @@ int udptcp_dport_cmp(struct ip_packet *ip, uint filter_port){
         return EXIT_SUCCESS;
     }
 
-    return (ntohs(hdr->dstPort) == filter_port) ? 1 : 0;
+    return (ntohs(hdr->dstPort) == filter_port) ? 0 : -1;
 }
 
 /* ARP HW type to string */
@@ -894,12 +894,12 @@ void PrintExtraEtherInfo(struct eth_packet *eth_pkt){
 	struct arp_packet *arp = NULL;
     struct eth_8021q_packet *q_pkt = (void *)(eth_pkt);
 
-    if(ethtype_cmp(ntohs(eth_pkt->eth_type), ETH_P_8021Q)){
+    if(!ethtype_cmp(ntohs(eth_pkt->eth_type), ETH_P_8021Q)){
         printf(",vlan_prio=%d,cfi=%c,vlan_id=%d\nVlanEtherType=%s", q_pkt->priority, q_pkt->cfi ? 'T' : 'F', ntohs(q_pkt->vlan_id),GetEtherType(ntohs(q_pkt->ether_type)));
         return;
     }
 
-    if(ethtype_cmp(ntohs(eth_pkt->eth_type), ETH_P_ARP)){
+    if(!ethtype_cmp(ntohs(eth_pkt->eth_type), ETH_P_ARP)){
         tmp = (char *)eth_pkt;
         tmp += sizeof(struct eth_packet);
         arp = (struct arp_packet *) tmp;
@@ -1097,12 +1097,13 @@ char DumpPacket(char *buffer, int len, int quiet)
 
 	struct eth_packet *eth_pkt = (void *)(buffer);
 	struct ip_packet *ip = NULL;
-
+	printf("test3");
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_MSK_FILTER)){
         ff = ntohl(*((uint*)(buffer+arbitrary_msk_filter_pos)));
         if(len < arbitrary_msk_filter_pos+4){
             return EXIT_FAILURE;
         }
+
         truth = (FILTER_CHK_MASK(ff, arbitrary_msk_filter));
 
         if(truth){
@@ -1156,7 +1157,7 @@ char DumpPacket(char *buffer, int len, int quiet)
 
     /* filter out the cruft - in userspace I know! */
     if(FILTER_CHK_MASK(filter_mask, ETH_SRC_FILTER)){
-        if(ethmask_cmp(eth_pkt->src_mac, eth_src_is_mac_filter)){
+        if(!ethmask_cmp(eth_pkt->src_mac, eth_src_is_mac_filter)){
             if(eth_src_not){
                 return EXIT_FAILURE;
             }
@@ -1166,7 +1167,7 @@ char DumpPacket(char *buffer, int len, int quiet)
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_DST_FILTER)){
-        if(ethmask_cmp(eth_pkt->dst_mac, eth_dst_is_mac_filter)){
+        if(!ethmask_cmp(eth_pkt->dst_mac, eth_dst_is_mac_filter)){
             if(eth_dst_not){
                 return EXIT_FAILURE;
             }
@@ -1176,7 +1177,7 @@ char DumpPacket(char *buffer, int len, int quiet)
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_TYPE_FILTER)){
-        if(ethtype_cmp(ntohs(eth_pkt->eth_type), eth_type_is_filter)){
+        if(!ethtype_cmp(ntohs(eth_pkt->eth_type), eth_type_is_filter)){
             if(eth_type_not){
                 return EXIT_FAILURE;
             }
@@ -1186,7 +1187,7 @@ char DumpPacket(char *buffer, int len, int quiet)
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_VLAN_FILTER)){
-        if(ethvlan_cmp(eth_pkt, eth_vlan_is_filter)){
+        if(!ethvlan_cmp(eth_pkt, eth_vlan_is_filter)){
             if(eth_vlan_not){
                 return EXIT_FAILURE;
             }
@@ -1196,7 +1197,7 @@ char DumpPacket(char *buffer, int len, int quiet)
     }
 
     if(eth_contains_ip(eth_pkt)){
-        ip = (void *)(buffer + eth_contains_ip(eth_pkt));
+        ip = (void *)(buffer + (eth_contains_ip(eth_pkt)-1));
 
         if(FILTER_CHK_MASK(filter_mask, IP_SRC_FILTER)){
             if(ipcmp(ip->ip_src.IPv4_src, ip_src_is_filter)){
@@ -1239,7 +1240,7 @@ char DumpPacket(char *buffer, int len, int quiet)
         }
 
         if(FILTER_CHK_MASK(filter_mask, UDP_TCP_SPORT_FILTER)){
-            if(udptcp_sport_cmp(ip, udp_tcp_sport_is_filter)){
+            if(!udptcp_sport_cmp(ip, udp_tcp_sport_is_filter)){
                 if(udp_tcp_sport_not){
                     return EXIT_FAILURE;
                 }
@@ -1249,7 +1250,7 @@ char DumpPacket(char *buffer, int len, int quiet)
         }
 
         if(FILTER_CHK_MASK(filter_mask, UDP_TCP_DPORT_FILTER)){
-            if(!udptcp_sport_cmp(ip, udp_tcp_dport_is_filter)){
+            if(udptcp_sport_cmp(ip, udp_tcp_dport_is_filter)){
                 if(udp_tcp_dport_not){
                     return EXIT_FAILURE;
                 }
@@ -1259,7 +1260,7 @@ char DumpPacket(char *buffer, int len, int quiet)
         }
     }
 
-    if(!eth_contains_ip(eth_pkt) && need_IP == 1){
+    if(!(eth_contains_ip(eth_pkt)-1) && need_IP == 1){
         return EXIT_FAILURE;
     }
 
@@ -1277,6 +1278,8 @@ char DumpPacket(char *buffer, int len, int quiet)
 
         	tcph = NULL;
         	udph = NULL;
+
+        	printf("ip: %s", ip->protocol);
 
             if(ip->protocol == 0x06){
                 buffer = buffer + eth_contains_ip(eth_pkt);
@@ -1338,12 +1341,14 @@ char DumpPacket(char *buffer, int len, int quiet)
                 printf(",calc'd=%x",  cksum ? (unsigned short) get_udp_checksum(ip, udph) : 0);
                 printf(",sport=%d,dport=%d", ntohs(udph->srcPort),ntohs(udph->dstPort));
             }
+
+
         }
         printf("\n");
         fflush(stdout);
     }
 
-    return 1;
+    return EXIT_SUCCESS;
 }
 
 int run = 1;
@@ -1449,7 +1454,7 @@ int main(int argc, char *argv[]){
      NET_RAW and NET_ADMIN by using cap_enable() function.
      =================================================================
     */
-    if (cap_enable(cap_list) < 0) {
+    if (cap_enable(cap_list) == EXIT_FAILURE) {
     	return EXIT_FAILURE;
     }
 
@@ -1678,7 +1683,7 @@ int main(int argc, char *argv[]){
                 }else{
                     printf("UNKNOWN OPTION, %s,%s\n", argv[argc], lastarg);
                     print_usage();
-                    return EXIT_SUCCESS;
+                    return EXIT_FAILURE;
                 }
                 lastarg = NULL;
             }
@@ -1688,7 +1693,7 @@ int main(int argc, char *argv[]){
     if(!pcap_input){
         /*doesn't work with OS X*/
         sd = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
-
+        printf("test");
         if ( sd < 0 ){
             perror("Sniffer - socket");
             return EXIT_FAILURE;
@@ -1826,7 +1831,7 @@ int main(int argc, char *argv[]){
             bytes_read = select(sd+1, &readfd, NULL, NULL, &tv);
 
             if(bytes_read > 0){
-                bytes_read = recvfrom(sd, data, sizeof(rdata), 0, (struct sockaddr *)&sa, &sl);
+            	bytes_read = recvfrom(sd, data, sizeof(rdata), 0, (struct sockaddr *)&sa, &sl);
             }else{
                 bytes_read = 1;
                 continue;
