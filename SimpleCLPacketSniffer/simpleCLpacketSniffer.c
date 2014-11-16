@@ -100,6 +100,49 @@
 #define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b)
 #define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
 
+/* the following defines are taken from if_ether.h
+ * credit must be given to:
+ * Author:      Fred N. van Kempen, <waltje@uWalt.NL.Mugnet.ORG>
+ *              Donald Becker, <becker@super.org>
+ *              Alan Cox, <alan@redhat.com>
+ *              Steve Whitehouse, <gw7rrm@eeshack3.swan.ac.uk>
+ */
+# define ETH_P_IP        0x0800          /* Internet Protocol packet     */
+# define ETH_P_X25       0x0805          /* CCITT X.25                   */
+# define ETH_P_ARP       0x0806          /* Address Resolution packet    */
+# define ETH_P_BPQ       0x08FF          /* G8BPQ AX.25 Ethernet Packet  [ NOT AN OFFICIALLY REGISTERED ID ] */
+# define ETH_P_IEEEPUP   0x0a00          /* Xerox IEEE802.3 PUP packet */
+# define ETH_P_IEEEPUPAT 0x0a01          /* Xerox IEEE802.3 PUP Addr Trans packet */
+# define ETH_P_DEC       0x6000          /* DEC Assigned proto           */
+# define ETH_P_DNA_DL    0x6001          /* DEC DNA Dump/Load            */
+# define ETH_P_DNA_RC    0x6002          /* DEC DNA Remote Console       */
+# define ETH_P_DNA_RT    0x6003          /* DEC DNA Routing              */
+# define ETH_P_LAT       0x6004          /* DEC LAT                      */
+# define ETH_P_DIAG      0x6005          /* DEC Diagnostics              */
+# define ETH_P_CUST      0x6006          /* DEC Customer use             */
+# define ETH_P_SCA       0x6007          /* DEC Systems Comms Arch       */
+# define ETH_P_RARP      0x8035          /* Reverse Addr Res packet      */
+# define ETH_P_ATALK     0x809B          /* Appletalk DDP                */
+# define ETH_P_AARP      0x80F3          /* Appletalk AARP               */
+# define ETH_P_8021Q     0x8100          /* 802.1Q VLAN Extended Header  */
+# define ETH_P_IPX       0x8137          /* IPX over DIX                 */
+# define ETH_P_IPV6      0x86DD          /* IPv6 over bluebook           */
+# define ETH_P_PAUSE     0x8808          /* IEEE Pause frames. See 802.3 31B */
+# define ETH_P_SLOW      0x8809          /* Slow Protocol. See 802.3ad 43B */
+# define ETH_P_WCCP      0x883E          /* Web-cache coordination protocol
+                                         * defined in draft-wilson-wrec-wccp-v2-00.txt */
+# define ETH_P_PPP_DISC  0x8863          /* PPPoE discovery messages     */
+# define ETH_P_PPP_SES   0x8864          /* PPPoE session messages       */
+# define ETH_P_MPLS_UC   0x8847          /* MPLS Unicast traffic         */
+# define ETH_P_MPLS_MC   0x8848          /* MPLS Multicast traffic       */
+# define ETH_P_ATMMPOA   0x884c          /* MultiProtocol Over ATM       */
+# define ETH_P_ATMFATE   0x8884          /* Frame-based ATM Transport
+                                          * over Ethernet
+                                         */
+# define ETH_P_AOE       0x88A2          /* ATA over Ethernet            */
+# define ETH_P_TIPC      0x88CA          /* TIPC                         */
+
+
 /* FIlter value reference for mask check and set */
 #define ETH_DST_FILTER       0x00000002
 #define ETH_SRC_FILTER       0x00000001
@@ -130,8 +173,6 @@
 /* Operation */
 #define ARP_REQUEST 1
 #define ARP_REPLY   2
-
-int debug = 0;
 
 typedef unsigned char uchar;
 typedef unsigned int uint;
@@ -680,22 +721,26 @@ char *GetProtocol(uint value){
 }
 
 /* <linux/if_ether.h> These are the defined Ethernet Protocol ID's. */
-char *GetEtherType(int eth_type){
-
-    switch(eth_type){
-		case ETH_P_IP:    return "IPv4"; 	/* Internet Protocol packet	*/
-		case ETH_P_8021Q: return "802.1Q"; 	/* 802.1Q VLAN Extended Header */
-		case ETH_P_ARP:   return "ARP"; 	/* Address Resolution packet */
-		case ETH_P_X25:   return "X.25";	/* CCITT X.25 */
-		case ETH_P_RARP:  return "RARP";	/* Reverse Addr Res packet */
-		case ETH_P_IPV6:  return "IPv6";	/* IPv6 over bluebook */
-		case ETH_P_TIPC:  return "TIPC";	/* TIPC */
-		default: return "???";
-	}
+char *GetEtherType(int eth_type)
+{
+    static char protohex[7] = {0};
+    switch(eth_type)
+    {
+    case ETH_P_IP:    return "IPv4";
+    case ETH_P_8021Q: return "802.1Q";
+    case ETH_P_ARP:   return "ARP";
+    case ETH_P_X25:   return "X.25";
+    case ETH_P_RARP:  return "RARP";
+    case ETH_P_IPV6:  return "IPv6";
+    case ETH_P_TIPC:  return "TIPC";
+    default:
+        snprintf(protohex, 5, "0x%04x", eth_type);
+        return protohex;
+    }
 }
 
 int eth_contains_ip(struct eth_packet *eth_pkt){ // eth main struct
-    if(ntohs(eth_pkt->eth_type) == ETH_P_8021Q){
+    if(ntohs(eth_pkt->eth_type) == ETH_P_38021Q){
         return 18;
     }else if (ntohs(eth_pkt->eth_type) == ETH_P_IP){
         return 14;
@@ -705,21 +750,14 @@ int eth_contains_ip(struct eth_packet *eth_pkt){ // eth main struct
 }
 
 int ipcmp(uchar *ipstruct_addr, int addr){ // Struct & filtering
-    int ipstr_addr = *((int*)ipstruct_addr);
 
-    if(debug){
-        printf("IPAddrFilter: in[%X],flt[%X]\n", addr, ipstr_addr);
-    }
+	int ipstr_addr = *((int*)ipstruct_addr);
 
     return (addr) ? ((addr == ipstr_addr) ? 1 : 0) : 1;
 }
 
 int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr){ // // Struct & filtering
     int i =0 ;
-
-    if(debug){
-        printf("EtherAddrFilter: in[%06X],flt[%06X]\n", retr_addr, filter_addr);
-    }
 
     for(;i<ETH_ALEN;++i){
         if(filter_addr[i] != retr_addr[i]){
@@ -878,22 +916,17 @@ void PrintExtraEtherInfo(struct eth_packet *eth_pkt){
         if(ntohs(arp->opcode) == ARP_REQUEST){
             printf("Who has ");
             printf("(%s)", GetEtherType(ntohs(arp->proto_type)));
-            printf(" : %s; tell %s @ %s",
-                   arp_target_proto(arp),
-                   arp_sender_proto(arp), arp_sender_hw(arp));
+            printf(" : %s; tell %s @ %s", arp_target_proto(arp), arp_sender_proto(arp), arp_sender_hw(arp));
 
         }else if(ntohs(arp->opcode) == ARP_REPLY){
             printf("(%s)", GetEtherType(ntohs(arp->proto_type)));
-            printf(" : tell %s @ %s that %s is reached \n\tvia %s",
-                   arp_target_proto(arp), arp_target_hw(arp),
-                   arp_sender_proto(arp), arp_sender_hw(arp));
+            printf(" : tell %s @ %s that %s is reached \n\tvia %s", arp_target_proto(arp), arp_target_hw(arp), arp_sender_proto(arp), arp_sender_hw(arp));
 
         }else{
         	printf(", ARP OPCODE unknown :%d", ntohs(arp->opcode));
         }
         printf("\n");
     }
-
 }
 
 unsigned char convertAsciiHexCharToBin(char asciiHexChar){
@@ -1068,8 +1101,9 @@ char DumpPacket(char *buffer, int len, int quiet)
 	uchar truth = NULL;
 	tcpHdr *tcph = NULL;
 	udpHdr *udph = NULL;
-    struct eth_packet *eth_pkt=(void *)(buffer);
-    struct ip_packet *ip = NULL;
+
+	struct eth_packet *eth_pkt = (void *)(buffer);
+	struct ip_packet *ip = NULL;
 
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_MSK_FILTER)){
         ff = ntohl(*((uint*)(buffer+arbitrary_msk_filter_pos)));
@@ -1236,19 +1270,20 @@ char DumpPacket(char *buffer, int len, int quiet)
         return EXIT_FAILURE;
     }
 
-    if(quiet){
+    if(quiet){ // if quiet equal to 1 = display
         printf("-------------------------------------------------\n");
         dump(buffer, len, NULL);
 
         PrintAddr("Destination EtherID=", eth_pkt->dst_mac, eETH_ADDR);
         PrintAddr(", Source EtherID=", eth_pkt->src_mac, eETH_ADDR);
         printf("\nEthertype=%s", GetEtherType(ntohs(eth_pkt->eth_type)));
+
         PrintExtraEtherInfo(eth_pkt);
 
         if(eth_contains_ip(eth_pkt)){
 
         	tcph = NULL;
-            udph = NULL;
+        	udph = NULL;
 
             if(ip->protocol == 0x06){
                 buffer = buffer + eth_contains_ip(eth_pkt);
