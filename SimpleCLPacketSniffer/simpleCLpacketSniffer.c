@@ -64,19 +64,6 @@ classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
 
 /* Function & Global Declaration */
 
-/* NEW */
-#define MAX_NUM_ROWS 1522
-
-struct histogram_row
-{
-	uint pkt_size;
-	uint pkt_count;
-	uint32_t time_slice;
-};
-
-struct histogram_row histogram[MAX_NUM_ROWS+1];
-struct histogram_row burst_hist[65535];
-
 # define ERROR_PRINT perror
 # define EXIT_SUCCESS 0
 # define EXIT_FAILURE -1
@@ -617,7 +604,11 @@ long get_udp_checksum(struct ip_packet * myip, udpHdr * myudp) {
 	pseudohead.length=htons(sizeof(udpHdr) + udpdatalen );
 
 	totaludp_len = sizeof(struct tcp_pseudo) + sizeof(udpHdr) + udpdatalen;
-	udp = (unsigned short*)malloc(totaludp_len);
+
+	if((udp = (unsigned short*)malloc(totaludp_len)) == NULL){
+		perror("Allocation faild");
+		return EXIT_FAILURE;
+	}
 
 	memcpy((unsigned char *)udp,&pseudohead,sizeof(struct tcp_pseudo));
 	memcpy((unsigned char *)udp+sizeof(struct tcp_pseudo),(unsigned char *)myudp,sizeof(udpHdr));
@@ -647,7 +638,11 @@ long get_tcp_checksum(struct ip_packet * myip, tcpHdr * mytcp) {
 	pseudohead.length=htons(sizeof(tcpHdr) + tcpopt_len + tcpdatalen);
 
 	totaltcp_len = sizeof(struct tcp_pseudo) + sizeof(tcpHdr) + tcpopt_len + tcpdatalen;
-	tcp = (unsigned short*)malloc(totaltcp_len);
+
+	if((tcp = (unsigned short*)malloc(totaltcp_len)) == NULL ){
+		perror("Allocation faild");
+		return EXIT_FAILURE;
+	}
 
 	memcpy((unsigned char *)tcp,&pseudohead,sizeof(struct tcp_pseudo));
 	memcpy((unsigned char *)tcp+sizeof(struct tcp_pseudo),(unsigned char *)mytcp,sizeof(tcpHdr));
@@ -1407,12 +1402,19 @@ int main(int argc, char *argv[]){
 	struct ifreq interface_obj;
 	struct timeval tv;
 	struct timeval rcvtime;
-	struct timeval lasttime = {0};
-	struct timeval curtime = {0};
+
+	uint sl;
+	uchar notflag = 0;
+
+	pcap_hdr_t in_pcap_header;
+	pcap_hdr_t pcap_header;
+	pcaprec_hdr_t pcap_rec;
+	pcaprec_hdr_t pcap_hdr;
+
+	pid_t pid = 0 ;
+	fd_set readfd;
 
 	/* NEW */
-	uint print_hist = 0;
-
 	unsigned long int pkts_rx = 0;
 	unsigned long int pkts_pass = 0;
 
@@ -1424,15 +1426,9 @@ int main(int argc, char *argv[]){
 	char *iface = NULL;
 	char *oface = NULL;
 
-	uint sl;
-	uchar notflag = 0;
+	struct timeval lasttime = {0};
+	struct timeval curtime = {0};
 
-	pcap_hdr_t pcap_header;
-	pcaprec_hdr_t pcap_rec;
-	pcaprec_hdr_t pcap_hdr;
-
-	pid_t pid = 0 ;
-	fd_set readfd;
 
 	/*
 	=================================================================
@@ -1699,7 +1695,7 @@ int main(int argc, char *argv[]){
 
 	} else {//writing for pcap output
 		sd = open(pcap_fname, O_RDWR); // open flag O_RDWR Permits all system calls to be executed.
-		pcap_hdr_t in_pcap_header;
+
 		if(sd < 1){
 			perror("open");
 			return EXIT_FAILURE;
@@ -1740,7 +1736,6 @@ int main(int argc, char *argv[]){
 
 	if(rt){
 
-		pid = getpid();
 		sp.sched_priority = 77; /* - magic number - a high priority */
 		sl = sched_setscheduler(pid, SCHED_FIFO, &sp);
 
@@ -1806,7 +1801,6 @@ int main(int argc, char *argv[]){
 			}
 		}
 	}do {
-
 		tv.tv_sec = 0;
 		tv.tv_usec = 5000; /* 5ms */
 
@@ -1821,12 +1815,18 @@ int main(int argc, char *argv[]){
 
 			if(bytes_read > 0){
 				bytes_read = recvfrom(sd, data, 65535, 0, (struct sockaddr *)&sa, &sl);
+				rcvtime.tv_sec = time(NULL);
+				/* we do this because on some platforms, notably embedded,
+				gettimeofday can "forget" to populate tv_sec. */
+				rcvtime.tv_usec = 0;
+				gettimeofday(&rcvtime, NULL);
 			}else{
 				bytes_read = 1;
 				continue;
 			}
 		}else{
 			if(read(sd, &pcap_rec, sizeof(pcap_rec)) < 0){
+				perror("read");
 				bytes_read = 0;
 				run = 0;
 				continue;
@@ -1837,31 +1837,18 @@ int main(int argc, char *argv[]){
 				pcap_rec.incl_len = endian_swap_32(pcap_rec.incl_len);
 				pcap_rec.orig_len = endian_swap_32(pcap_rec.orig_len);
 			}
-			memcpy(&lasttime, &curtime, sizeof(lasttime));
-			curtime.tv_sec = pcap_rec.ts_sec;
-			curtime.tv_usec = pcap_rec.ts_usec;
-			pcap_pkt_sleep(&curtime, &lasttime);
+//			memcpy(&lasttime, &curtime, sizeof(lasttime));
+//			curtime.tv_sec = pcap_rec.ts_sec;
+//			curtime.tv_usec = pcap_rec.ts_usec;
+//			pcap_pkt_sleep(&curtime, &lasttime);
 			bytes_read = read(sd, data, pcap_rec.incl_len);
 		}
 
 		if( bytes_read > 0 ){
-
 			res = DumpPacket(data, bytes_read, display);
-			/* NEW */
-			if(res == 1)
-			{
+
+			if(res == 1) {
 				++pkts_pass;
-				if(print_hist)
-				{
-					for(sl = 0; sl < MAX_NUM_ROWS; ++sl)
-					{
-						if(bytes_read <= histogram[sl].pkt_size)
-						{
-							histogram[sl].pkt_count++;
-							break;
-						}
-					}
-				}
 			}
 			if(pcap_dump_file && res == 1) {
 				rcvtime.tv_sec = time(NULL);
@@ -1889,10 +1876,11 @@ int main(int argc, char *argv[]){
 			perror("Sniffer read");
 			return EXIT_FAILURE;
 		}
-		if(bytes_read) ++pkts_rx;
-	}
+		if(bytes_read){
+			++pkts_rx;
+		}
+	}while (run && bytes_read > 0 );
 
-	while (run && bytes_read > 0 );
 	printf("\nTerminating...\n");
 
 	if(pcap_dump_file){
@@ -1900,7 +1888,7 @@ int main(int argc, char *argv[]){
 	}
 	/* NEW */
 	printf("Packets captured: %lu\n", pkts_rx);
-	/* NEW */
+
 	if(pkts_pass != pkts_rx){
 		printf("Packets matching: %lu\n", pkts_pass);
 	}
