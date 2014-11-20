@@ -565,6 +565,7 @@ int cap_enable(cap_value_t cap_list[]) {
     	perror("cap_set_proc() fail return");
     	return EXIT_failure;
     }
+
     name = cap_to_text(caps, NULL);
     printf("After setting: getuid: %d geteuid: %d Capabilities : %s\n", getuid(), geteuid(), name);
 
@@ -1449,6 +1450,9 @@ int main(int argc, char *argv[]){
 	char *iface = NULL;
 	char *oface = NULL;
 
+	struct timeval lasttime = {0};
+	struct timeval curtime = {0};
+
     /*
 	=================================================================
 	CAP_NET_ADMIN: Promiscuous mode and a truckload of other
@@ -1537,7 +1541,7 @@ int main(int argc, char *argv[]){
                 }
                 else if(!strncmp("--output", argv[argc], 8) && lastarg != NULL){
                     printf("Sniffer start pcap execution...\n");
-                    pcap_dump_file = fopen(lastarg, "w+");
+                    pcap_dump_file = fopen(lastarg, "w+r");
 
                     if(pcap_dump_file == NULL) {
                         printf("unable to save pcap file. aborting.\n");
@@ -1721,7 +1725,7 @@ int main(int argc, char *argv[]){
             return EXIT_failure;
         }
 
-    } else {//writing for pcap output
+    } else { //writing for pcap output
 
         sd = open(pcap_fname, O_RDWR); // open flag O_RDWR Permits all system calls to be executed.
 
@@ -1849,7 +1853,7 @@ int main(int argc, char *argv[]){
 
         if(!pcap_input){
             sl = sizeof(struct sockaddr_in);
-            tjFD_SET(sd, &readfd);
+            FD_SET(sd, &readfd);
             bytes_read = select(sd+1, &readfd, NULL, NULL, &tv);
 
             if(bytes_read > 0){
@@ -1878,12 +1882,12 @@ int main(int argc, char *argv[]){
                 pcap_rec.orig_len = endian_swap_32(pcap_rec.orig_len);
             }
 
-            // memcpy(&lasttime, &curtime, sizeof(lasttime));
+            memcpy(&lasttime, &curtime, sizeof(lasttime));
 
-            // curtime.tv_sec = pcap_rec.ts_sec;
-            // curtime.tv_usec = pcap_rec.ts_usec;
+            curtime.tv_sec = pcap_rec.ts_sec;
+            curtime.tv_usec = pcap_rec.ts_usec;
 
-            // pcap_pkt_sleep(&curtime, &lasttime);
+            pcap_pkt_sleep(&curtime, &lasttime);
 
             bytes_read = read(sd, data, pcap_rec.incl_len);
         }
