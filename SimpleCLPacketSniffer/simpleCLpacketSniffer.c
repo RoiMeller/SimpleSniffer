@@ -1,5 +1,3 @@
-#if defined(linux) // This program is Linux-specific !
-
 	/*
 	=====================================================================================
   	Simple CommandLine Packet Sniffer
@@ -35,35 +33,35 @@
 
 /* INCLUDES */
 
-# include <stdio.h> 			// For standard things
+# include <stdio.h>				// For standard things
 # include <stdint.h>			// Declare sets of integer types having specified widths, and shall define corresponding sets of macros.
-# include <sys/param.h> 		// Old-style Unix parameters and limits
-# include <sys/socket.h> 		// Declarations of socket constants, types, and functions
+# include <sys/param.h>			// Old-style Unix parameters and limits
+# include <sys/socket.h>		// Declarations of socket constants, types, and functions
 # include <arpa/inet.h>			// uint32_t and uint16_t
-# include <net/ethernet.h> 		// For ether_header
+# include <net/ethernet.h>		// For ether_header
 # include <errno.h>				// Defines macros for reporting and retrieving error conditions
 # include <sys/types.h>			// Various data types
-# include <stdlib.h>    		// malloc / EXIT_success = 0, EXIT_FAILURE = 1
-# include <string.h> 			// strlen
+# include <stdlib.h>			// malloc / EXIT_SUCCESS = 0, EXIT_FAILURE = 1
+# include <string.h>			// strlen
 # include <netinet/in.h>		// Internet Protocol family
-# include <netinet/tcp.h> 		// Provides declarations for tcp header
-# include <netinet/ip.h> 		// Provides declarations for ip header
+# include <netinet/tcp.h>		// Provides declarations for tcp header
+# include <netinet/ip.h>		// Provides declarations for ip header
 # include <unistd.h>			// provides access to the POSIX operating system API
 # include <fcntl.h>				// File opening, locking and other operations
 # include <sys/select.h>		// Define the timeval structure
 # include <sys/time.h>			// Time types
 # include <features.h>
 # include <linux/if.h>			// An implementation of the TCP/IP protocol
-# include <linux/if_ether.h>	//
-# include <linux/if_packet.h>	//
-# include <sys/ioctl.h>			//
-# include <sched.h>				//
+# include <linux/if_ether.h>
+# include <linux/if_packet.h>
+# include <sys/ioctl.h>
+# include <sched.h>
 # include <signal.h>			// POSIX signals
-# include <time.h>				//
+# include <time.h>
 # include <unistd.h>			// Various essential POSIX functions and constants - syscall()
-# include <sys/capability.h>	//
-# include <linux/capability.h>  // _LINUX_CAPABILITY_VERSION
-# include <sys/syscall.h>       // __NR_capget
+# include <sys/capability.h>
+# include <linux/capability.h>	// _LINUX_CAPABILITY_VERSION
+# include <sys/syscall.h>		// __NR_capget
 # include <netdb.h>				// definitions for network database operations
 # include <linux/prctl.h>
 
@@ -618,7 +616,13 @@ long get_udp_checksum(struct ip_packet * myip, udpHdr * myudp) {
     pseudohead.length=htons(sizeof(udpHdr) + udpdatalen );
 
     totaludp_len = sizeof(struct tcp_pseudo) + sizeof(udpHdr) + udpdatalen;
-    udp = (unsigned short*)malloc(totaludp_len);
+
+	udp = (unsigned short*)malloc(totaludp_len);
+
+	if(udp == NULL){
+		perror("Allocation faild");
+		return EXIT_FAILURE;
+	}
 
     memcpy((unsigned char *)udp,&pseudohead,sizeof(struct tcp_pseudo));
     memcpy((unsigned char *)udp+sizeof(struct tcp_pseudo),(unsigned char *)myudp,sizeof(udpHdr));
@@ -646,7 +650,13 @@ long get_tcp_checksum(struct ip_packet * myip, tcpHdr * mytcp) {
     pseudohead.length=htons(sizeof(tcpHdr) + tcpopt_len + tcpdatalen);
 
     totaltcp_len = sizeof(struct tcp_pseudo) + sizeof(tcpHdr) + tcpopt_len + tcpdatalen;
+
     tcp = (unsigned short*)malloc(totaltcp_len);
+
+    if(tcp == NULL){
+		perror("Allocation faild");
+		return EXIT_FAILURE;
+    }
 
     memcpy((unsigned char *)tcp,&pseudohead,sizeof(struct tcp_pseudo));
     memcpy((unsigned char *)tcp+sizeof(struct tcp_pseudo),(unsigned char *)mytcp,sizeof(tcpHdr));
@@ -696,8 +706,10 @@ void PrintAddr(char* msg, unsigned char *addr, EAddress is_ip) {
 
 /* <netinet/in.h> Standard well-defined IP protocols. */
 char *GetProtocol(uint value){
-    static char protohex[5] = {0};
-    switch (value){
+
+	static char protohex[5] = {0};
+
+	switch (value){
 		case IPPROTO_IP: return "IP"; 		/* Dummy protocol for TCP.  */
 		case IPPROTO_ICMP: return "ICMP"; 	/* Internet Control Message Protocol.  */
 		case IPPROTO_IGMP: return "IGMP"; 	/* IPIP tunnels (older KA9Q tunnels use 94).  */
@@ -707,9 +719,9 @@ char *GetProtocol(uint value){
 		case IPPROTO_IDP: return "IDP";
 		case IPPROTO_IPV6: return "IPV 	6/4";
 		case IPPROTO_RAW: return "RAW"; 	/* Raw IP packets.  */
-		default:
-			snprintf(protohex, 5, "0x%02x", value);
-			return protohex;
+	default:
+		snprintf(protohex, 5, "0x%02x", value);
+		return protohex;
     }
 }
 
@@ -717,17 +729,17 @@ char *GetProtocol(uint value){
 char *GetEtherType(int eth_type)
 {
     static char protohex[7] = {0};
-    switch(eth_type)
-    {
-    case ETH_P_IP:    return "IPv4";
-    case ETH_P_8021Q: return "802.1Q";
-    case ETH_P_ARP:   return "ARP";
-    case ETH_P_X25:   return "X.25";
-    case ETH_P_RARP:  return "RARP";
-    case ETH_P_IPV6:  return "IPv6";
-    case ETH_P_TIPC:  return "TIPC";
+
+    switch(eth_type){
+    	case ETH_P_IP:    return "IPv4";
+    	case ETH_P_8021Q: return "802.1Q";
+    	case ETH_P_ARP:   return "ARP";
+    	case ETH_P_X25:   return "X.25";
+    	case ETH_P_RARP:  return "RARP";
+    	case ETH_P_IPV6:  return "IPv6";
+    	case ETH_P_TIPC:  return "TIPC";
     default:
-        snprintf(protohex, 5, "0x%04x", eth_type);
+        snprintf(protohex, 7, "0x%04x", eth_type);
         return protohex;
     }
 }
@@ -1384,45 +1396,53 @@ void pcap_pkt_sleep(struct timeval *pPacketCurrent,struct timeval *pPacketLast){
 int main(int argc, char *argv[]){
 
 	/* Declaration */
-    FILE *pcap_dump_file = NULL;
+	FILE *pcap_dump_file = NULL;
 
-    int sd=-1, od=-1, bytes_read;
-    int display = 1, out_phy;
-    int promisc = 0;
-    int result = 0;
-    char res = 0;
-    char *rdata;
-    char *data;
-    char rt = 0;
-    char infomercial[15]={0};
-    char pcap_input = 0;
-    char pcap_byteswap  = 0;
-    char *lastarg = NULL;
-    char *iface = NULL;
-    char *oface = NULL;
-    char *pcap_fname = NULL;
-    char *fpos = NULL;
+	int sd=-1;
+	int bytes_read;
+	int display = 1;
+	int result = 0;
 
-    struct sockaddr_ll peerAddr;
-    struct timeval lasttime = {0};
-    struct timeval curtime = {0};
-    struct sockaddr_in sa;
-    struct sched_param sp;
-    struct sockaddr_ll s1;
-    struct ifreq interface_obj;
-    struct timeval tv;
-    struct timeval rcvtime;
+	char res = 0;
+	char *rdata;
+	char *data;
+	char infomercial[15]={0};
+	char *lastarg = NULL;
+	char *fpos = NULL;
+	char pcap_input = 0;
+	char pcap_byteswap = 0;
+	char *pcap_fname = NULL;
 
-    pcap_hdr_t pcap_header;
-    pcaprec_hdr_t pcap_rec;
-    pcaprec_hdr_t pcap_hdr;
+	struct sockaddr_ll peerAddr;
+	struct sockaddr_ll s1;
+	struct sockaddr_in sa;
+	struct sched_param sp;
+	struct ifreq interface_obj;
+	struct timeval tv;
+	struct timeval rcvtime;
 
-    pid_t pid = 0 ;
+	uint sl;
+	uchar notflag = 0;
 
-    fd_set readfd;
+	pcap_hdr_t in_pcap_header;
+	pcap_hdr_t pcap_header;
+	pcaprec_hdr_t pcap_rec;
+	pcaprec_hdr_t pcap_hdr;
 
-    uchar notflag = 0;
-    uint sl;
+	pid_t pid = 0 ;
+	fd_set readfd;
+
+	/* NEW */
+	unsigned long int pkts_rx = 0;
+	unsigned long int pkts_pass = 0;
+
+	/* remove */
+	int od = -1;
+	int out_phy;
+	int promisc = 0;
+	char rt = 0;
+	char *iface = NULL;
+	char *oface = NULL;
 
     /*
 	=================================================================
@@ -1455,8 +1475,6 @@ int main(int argc, char *argv[]){
     if (cap_enable(cap_list) == EXIT_failure) {
     	return EXIT_failure;
     }
-
-
 
     if(argc > 1){ // If argument count bigger then 1
         while(--argc){ //run on all opening argument
@@ -1692,15 +1710,15 @@ int main(int argc, char *argv[]){
     if(!pcap_input){
         /*doesn't work with OS X*/
         sd = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
+
         if ( sd < 0 ){
             perror("Sniffer - socket");
             return EXIT_failure;
         }
+
     } else {//writing for pcap output
 
         sd = open(pcap_fname, O_RDWR); // open flag O_RDWR Permits all system calls to be executed.
-
-        pcap_hdr_t in_pcap_header;
 
         if(sd < 1){
             perror("open");
@@ -1819,6 +1837,7 @@ int main(int argc, char *argv[]){
 
         tv.tv_sec = 0;
         tv.tv_usec = 5000; /* 5ms */
+
         memset(rdata,'\0',65536);
         FD_ZERO(&readfd);
         data = rdata;
@@ -1829,13 +1848,19 @@ int main(int argc, char *argv[]){
             bytes_read = select(sd+1, &readfd, NULL, NULL, &tv);
 
             if(bytes_read > 0){
-            	bytes_read = recvfrom(sd, data, 65535, 0, (struct sockaddr *)&sa, &sl);
+				bytes_read = recvfrom(sd, data, 65535, 0, (struct sockaddr *)&sa, &sl);
+				rcvtime.tv_sec = time(NULL);
+				/* we do this because on some platforms, notably embedded,
+				gettimeofday can "forget" to populate tv_sec. */
+				rcvtime.tv_usec = 0;
+				gettimeofday(&rcvtime, NULL);
             }else{
                 bytes_read = 1;
                 continue;
             }
         }else{
             if(read(sd, &pcap_rec, sizeof(pcap_rec)) < 0){
+            	perror("read");
                 bytes_read = 0;
                 run = 0;
                 continue;
@@ -1848,18 +1873,23 @@ int main(int argc, char *argv[]){
                 pcap_rec.orig_len = endian_swap_32(pcap_rec.orig_len);
             }
 
-            memcpy(&lasttime, &curtime, sizeof(lasttime));
+            // memcpy(&lasttime, &curtime, sizeof(lasttime));
 
-            curtime.tv_sec = pcap_rec.ts_sec;
-            curtime.tv_usec = pcap_rec.ts_usec;
+            // curtime.tv_sec = pcap_rec.ts_sec;
+            // curtime.tv_usec = pcap_rec.ts_usec;
 
-            pcap_pkt_sleep(&curtime, &lasttime);
+            // pcap_pkt_sleep(&curtime, &lasttime);
 
             bytes_read = read(sd, data, pcap_rec.incl_len);
         }
 
         if ( bytes_read > 0 ){
             res = DumpPacket(data, bytes_read-1, display);
+
+			if(res == 1) {
+				++pkts_pass;
+			}
+
             if(pcap_dump_file && res == 1) {
 
                 rcvtime.tv_sec = time(NULL);
@@ -1890,6 +1920,10 @@ int main(int argc, char *argv[]){
             perror("Sniffer read");
             return EXIT_failure;
         }
+
+        if(bytes_read){
+			++pkts_rx;
+		}
     }
     while (run && bytes_read > 0 );
 
@@ -1898,17 +1932,12 @@ int main(int argc, char *argv[]){
     if(pcap_dump_file){
         fclose(pcap_dump_file);
     }
+	/* NEW */
+	printf("Packets captured: %lu\n", pkts_rx);
+
+	if(pkts_pass != pkts_rx){
+		printf("Packets matching: %lu\n", pkts_pass);
+	}
+
     return EXIT_success;
 }
-
-#else
-
-#include <stdio.h>
-
-int main() {
-	fprintf(stderr, "This program is Linux-specific\n");
-	return 0;
-}
-
-#endif
-
