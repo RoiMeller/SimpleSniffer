@@ -43,7 +43,7 @@
 # include <net/ethernet.h> 		// For ether_header
 # include <errno.h>				// Defines macros for reporting and retrieving error conditions
 # include <sys/types.h>			// Various data types
-# include <stdlib.h>    		// malloc / EXIT_SUCCESS = 0, EXIT_FAILURE = 1
+# include <stdlib.h>    		// malloc / EXIT_success = 0, EXIT_FAILURE = 1
 # include <string.h> 			// strlen
 # include <netinet/in.h>		// Internet Protocol family
 # include <netinet/tcp.h> 		// Provides declarations for tcp header
@@ -70,8 +70,8 @@
 /* Function & Global Declaration */
 
 # define ERROR_PRINT perror
-# define EXIT_SUCCESS 0
-# define EXIT_FAILURE -1
+# define EXIT_success 0
+# define EXIT_failure -1
 
 # ifdef __BYTE_ORDER
 #  if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -336,7 +336,7 @@ struct eth_packet {
     uchar dst_mac[ETH_ALEN];
     uchar src_mac[ETH_ALEN];
     uint  eth_type:16;
-};
+}eth_packet;
 
 struct eth_8021q_packet {
     uchar dst_mac[ETH_ALEN];
@@ -533,48 +533,48 @@ int cap_enable(cap_value_t cap_list[]) {
 	/* Real and effective group IDs */
 	if (setgid(rgid) == -1) {
 		perror("setgid");
-		return EXIT_FAILURE;
+		return EXIT_failure;
 	}
 	if (setegid(rgid) == -1) {
 		perror("setegid");
-		return EXIT_FAILURE;
+		return EXIT_failure;
 	}
 
 	/* Real and effective user IDs */
 	if (setuid(ruid) == -1) {
 		perror("setuid");
-		return EXIT_FAILURE;
+		return EXIT_failure;
 	}
 	if (seteuid(ruid) == -1) {
 		perror("seteuid");
-		return EXIT_FAILURE;
+		return EXIT_failure;
 	}
 
     if(cap_set_flag(caps, CAP_PERMITTED,   cl_len, cap_list, CAP_SET) == -1 ){
     	perror("cap_set_flag() set permitted fail return");
-    	return EXIT_FAILURE;
+    	return EXIT_failure;
     }
     if (cap_set_flag(caps, CAP_INHERITABLE, cl_len, cap_list, CAP_SET) == -1){
     	perror("cap_set_flag() set permitted fail return");
-    	return EXIT_FAILURE;
+    	return EXIT_failure;
     }
     if(cap_set_flag(caps, CAP_EFFECTIVE, cl_len, cap_list, CAP_SET) == -1){
     	perror("cap_set_flag() set permitted fail return");
-    	return EXIT_FAILURE;
+    	return EXIT_failure;
     }
 
     if (cap_set_proc(caps)) {
     	perror("cap_set_proc() fail return");
-    	return EXIT_FAILURE;
+    	return EXIT_failure;
     }
 
     printf("After setting: getuid: %d geteuid: %d Capabilities : %s\n", getuid(), geteuid(), cap_to_text(caps, NULL));
 
     if (cap_free(caps) == -1){
     	perror("CAP_FREE");
-    	return EXIT_FAILURE;
+    	return EXIT_failure;
     }
-    return EXIT_SUCCESS;
+    return EXIT_success;
 }
 
 /* used to ensure the integrity of data portions for data transmission */
@@ -754,14 +754,14 @@ int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr){ // // Str
 
     for(;i<ETH_ALEN;++i){
         if(filter_addr[i] != retr_addr[i]){
-            return EXIT_SUCCESS;
+            return EXIT_success;
         }
     }
-    return EXIT_FAILURE;
+    return EXIT_failure;
 }
 
 int ethtype_cmp(uint retr_type, uint filter_type){ // GetEtherType() & filtering
-    return (retr_type == filter_type) ? EXIT_SUCCESS : EXIT_FAILURE;
+    return (retr_type == filter_type) ? EXIT_success : EXIT_failure;
 }
 
 int ethvlan_cmp(struct eth_packet *eth_pkt, uint vlan_tag){
@@ -769,12 +769,12 @@ int ethvlan_cmp(struct eth_packet *eth_pkt, uint vlan_tag){
     uint retr_id;
 
     if(!ethtype_cmp(ntohs(eth_pkt->eth_type), ETH_P_8021Q)){
-        return EXIT_SUCCESS;
+        return EXIT_success;
     }
 
     retr_id = q_pkt->vlan_id;
 
-    return (ntohs(retr_id) == vlan_tag) ? EXIT_SUCCESS : EXIT_FAILURE;
+    return (ntohs(retr_id) == vlan_tag) ? EXIT_success : EXIT_failure;
 }
 
 int udptcp_sport_cmp(struct ip_packet *ip, uint filter_port){
@@ -782,7 +782,7 @@ int udptcp_sport_cmp(struct ip_packet *ip, uint filter_port){
     struct tcpudp_port_header *hdr = (void *)(buffer + (ip->header_len*4));
 
     if((ip->protocol != IPPROTO_TCP) && (ip->protocol != IPPROTO_UDP)){
-        return EXIT_SUCCESS;
+        return EXIT_success;
     }
 
     return (ntohs(hdr->srcPort) == filter_port) ? 0 : -1;
@@ -793,7 +793,7 @@ int udptcp_dport_cmp(struct ip_packet *ip, uint filter_port){
     struct tcpudp_port_header *hdr = (void *)(buffer + (ip->header_len*4));
 
     if((ip->protocol != IPPROTO_TCP) && (ip->protocol != IPPROTO_UDP)){
-        return EXIT_SUCCESS;
+        return EXIT_success;
     }
 
     return (ntohs(hdr->dstPort) == filter_port) ? 0 : -1;
@@ -916,7 +916,7 @@ void PrintExtraEtherInfo(struct eth_packet *eth_pkt){
             printf(" : tell %s @ %s that %s is reached \n\tvia %s", arp_target_proto(arp), arp_target_hw(arp), arp_sender_proto(arp), arp_sender_hw(arp));
 
         }else{
-        	printf(", ARP OPCODE unknown :%d", ntohs(arp->opcode));
+        	printf("ARP OPCODE unknown :%d", ntohs(arp->opcode));
         }
         printf("\n");
     }
@@ -955,12 +955,12 @@ unsigned int ascii_to_bin(char *str_bin)
 
     if((out = (char*)malloc(8192)) == NULL){
     	perror("Allocation faild ascii function");
-    	return EXIT_FAILURE;
+    	return EXIT_failure;
     }
 
     if((str = (char*)malloc(8192)) == NULL){
     	perror("Allocation faild ascii function");
-    	return EXIT_FAILURE;
+    	return EXIT_failure;
     }
 
     while(*str_bin != 0)
@@ -983,7 +983,7 @@ unsigned int ascii_to_bin(char *str_bin)
         if(secondNibble == 0xFF){
             free(out);
             free(str);
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
         out[outBufIdx] = ((firstNibble<<4)&0xF0) | (secondNibble &0xF);
         outBufIdx++;
@@ -997,7 +997,7 @@ unsigned int ascii_to_bin(char *str_bin)
         if((firstNibble == 0xFF) || (secondNibble == 0xFF)){
             free(out);
             free(str);
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
         out[outBufIdx] = ((firstNibble<<4)&0xF0)|(secondNibble&0xF);
         outBufIdx++;
@@ -1032,7 +1032,7 @@ int atoip(const char *pIpStr)
     hints.ai_socktype = SOCK_STREAM;
 
     if(getaddrinfo(pIpStr, NULL, &hints, &servinfo) != 0){
-        return EXIT_SUCCESS;
+        return EXIT_success;
     }
 
     for(p = servinfo; p != NULL; p = p->ai_next)
@@ -1096,62 +1096,61 @@ char DumpPacket(char *buffer, int len, int quiet)
 	udpHdr *udph = NULL;
 
 	struct eth_packet *eth_pkt = (void *)(buffer);
-	struct ip_packet *ip = NULL;
-	printf("test3");
+	struct ip_packet *ip = (void *)(buffer + (sizeof(eth_packet)));
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_MSK_FILTER)){
         ff = ntohl(*((uint*)(buffer+arbitrary_msk_filter_pos)));
         if(len < arbitrary_msk_filter_pos+4){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
 
         truth = (FILTER_CHK_MASK(ff, arbitrary_msk_filter));
 
         if(truth){
             if(arbitrary_msk_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }else if (!truth){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U8_FILTER)){
         if(len < arbitrary_u8_filter_pos+1){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
         if((buffer[arbitrary_u8_filter_pos] == arbitrary_u8_filter)){
             if(arbitrary_u8_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }else if (!arbitrary_u8_not){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U16_FILTER)){
         if(len < arbitrary_u16_filter_pos+2){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
         if((ntohs(*((ushort*)(buffer+arbitrary_u16_filter_pos))) == arbitrary_u16_filter)){
             if(arbitrary_u16_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }else if(!arbitrary_u16_not){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
     if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U32_FILTER)){
         if(len < arbitrary_u32_filter_pos+4){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
         if((ntohl(*((uint*)(buffer+arbitrary_u32_filter_pos))) == arbitrary_u32_filter)){
             if(arbitrary_u32_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
         else if (!arbitrary_u32_not){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
@@ -1159,40 +1158,40 @@ char DumpPacket(char *buffer, int len, int quiet)
     if(FILTER_CHK_MASK(filter_mask, ETH_SRC_FILTER)){
         if(!ethmask_cmp(eth_pkt->src_mac, eth_src_is_mac_filter)){
             if(eth_src_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }else if(!eth_src_not){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_DST_FILTER)){
         if(!ethmask_cmp(eth_pkt->dst_mac, eth_dst_is_mac_filter)){
             if(eth_dst_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }else if (!eth_dst_not){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_TYPE_FILTER)){
         if(!ethtype_cmp(ntohs(eth_pkt->eth_type), eth_type_is_filter)){
             if(eth_type_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }else if(!eth_type_not){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
     if(FILTER_CHK_MASK(filter_mask, ETH_VLAN_FILTER)){
         if(!ethvlan_cmp(eth_pkt, eth_vlan_is_filter)){
             if(eth_vlan_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }else if(!eth_vlan_not){
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
@@ -1202,66 +1201,66 @@ char DumpPacket(char *buffer, int len, int quiet)
         if(FILTER_CHK_MASK(filter_mask, IP_SRC_FILTER)){
             if(ipcmp(ip->ip_src.IPv4_src, ip_src_is_filter)){
                 if(ip_src_not){
-                    return EXIT_FAILURE;
+                    return EXIT_failure;
                 }
             }else if(!ip_src_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
 
         if(FILTER_CHK_MASK(filter_mask, IP_DST_FILTER)){
             if(ipcmp(ip->ip_dst.IPv4_dst, ip_dst_is_filter)){
                 if(ip_dst_not){
-                    return EXIT_FAILURE;
+                    return EXIT_failure;
                 }
             }else if(!ip_dst_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
 
         if(FILTER_CHK_MASK(filter_mask, IP_TOS_BYTE_FILTER)){
             if(ip->serve_type == ip_tos_byte_filter){
                 if(ip_tos_byte_filter_not){
-                    return EXIT_FAILURE;
+                    return EXIT_failure;
                 }
             }else if (!ip_tos_byte_filter_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
 
         if(FILTER_CHK_MASK(filter_mask, IP_PROTO_FILTER)){
             if(ip->protocol == ipproto_is_filter){
                 if(ipproto_not){
-                    return EXIT_FAILURE;
+                    return EXIT_failure;
                 }
             }else if (!ipproto_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
 
         if(FILTER_CHK_MASK(filter_mask, UDP_TCP_SPORT_FILTER)){
             if(!udptcp_sport_cmp(ip, udp_tcp_sport_is_filter)){
                 if(udp_tcp_sport_not){
-                    return EXIT_FAILURE;
+                    return EXIT_failure;
                 }
             }else if(!udp_tcp_sport_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
 
         if(FILTER_CHK_MASK(filter_mask, UDP_TCP_DPORT_FILTER)){
             if(udptcp_sport_cmp(ip, udp_tcp_dport_is_filter)){
                 if(udp_tcp_dport_not){
-                    return EXIT_FAILURE;
+                    return EXIT_failure;
                 }
             }else if(!udp_tcp_dport_not){
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
     }
 
     if(!(eth_contains_ip(eth_pkt)-1) && need_IP == 1){
-        return EXIT_FAILURE;
+        return EXIT_failure;
     }
 
     if(quiet){ // if quiet equal to 1 = display
@@ -1273,22 +1272,21 @@ char DumpPacket(char *buffer, int len, int quiet)
         printf("\nEthertype=%s", GetEtherType(ntohs(eth_pkt->eth_type)));
 
         PrintExtraEtherInfo(eth_pkt);
-
         if(eth_contains_ip(eth_pkt)){
 
         	tcph = NULL;
         	udph = NULL;
 
-        	printf("ip: %s", ip->protocol);
+
 
             if(ip->protocol == 0x06){
-                buffer = buffer + eth_contains_ip(eth_pkt);
+                buffer = buffer + (eth_contains_ip(eth_pkt)-1);
                 buffer = buffer + (ip->header_len * 4);
                 tcph = (tcpHdr *)buffer;
             }
 
             if(ip->protocol == 0x11){
-                buffer = buffer + eth_contains_ip(eth_pkt);
+                buffer = buffer + (eth_contains_ip(eth_pkt)-1);
                 buffer = buffer + (ip->header_len * 4);
                 udph = (udpHdr *)buffer;
             }
@@ -1348,7 +1346,7 @@ char DumpPacket(char *buffer, int len, int quiet)
         fflush(stdout);
     }
 
-    return EXIT_SUCCESS;
+    return EXIT_success;
 }
 
 int run = 1;
@@ -1363,7 +1361,7 @@ int sniff_nano_sleep(const struct timespec *req, struct timespec *remain){
         sniff_nano_sleep(remain, &_remainder);
     }
 
-    return EXIT_SUCCESS;
+    return EXIT_success;
 }
 
 void pcap_pkt_sleep(struct timeval *pPacketCurrent,struct timeval *pPacketLast){
@@ -1443,7 +1441,7 @@ int main(int argc, char *argv[]){
     /* Determine if process is running as root */
     if (getuid() != 0) {
 		printf("This program must run as root\n");
-		return EXIT_FAILURE;
+		return EXIT_failure;
 	}
 
     /*
@@ -1454,18 +1452,11 @@ int main(int argc, char *argv[]){
      NET_RAW and NET_ADMIN by using cap_enable() function.
      =================================================================
     */
-    if (cap_enable(cap_list) == EXIT_FAILURE) {
-    	return EXIT_FAILURE;
+    if (cap_enable(cap_list) == EXIT_failure) {
+    	return EXIT_failure;
     }
 
-    /* rdata allocation */
-    rdata = (char *)malloc(65535);
 
-    /*  error check for rdata allocation */
-    if(!rdata){
-        fprintf(stderr, "Sniffer: OOM\n"); // Prints Out of memory
-        return EXIT_FAILURE;
-    }
 
     if(argc > 1){ // If argument count bigger then 1
         while(--argc){ //run on all opening argument
@@ -1489,7 +1480,7 @@ int main(int argc, char *argv[]){
 
                 if(!strncmp("--help", argv[argc], 6)){ // print CL options
                 	print_usage();
-                	return EXIT_SUCCESS;
+                	return EXIT_success;
                 }
 
                 else if(!strncmp("--quiet", argv[argc], 7)){ /* CHOOSE RETHEAR TO keep the QUIET option ? */
@@ -1528,7 +1519,7 @@ int main(int argc, char *argv[]){
                     if(pcap_dump_file == NULL) {
                         printf("unable to save pcap file. aborting.\n");
                         perror("fopen");
-                        return EXIT_FAILURE;
+                        return EXIT_failure;
                     }
 
                     pcap_header.magic_number  = 0xa1b2c3d4;
@@ -1683,20 +1674,27 @@ int main(int argc, char *argv[]){
                 }else{
                     printf("UNKNOWN OPTION, %s,%s\n", argv[argc], lastarg);
                     print_usage();
-                    return EXIT_FAILURE;
+                    return EXIT_failure;
                 }
                 lastarg = NULL;
             }
         }
     }
+    /* rdata allocation */
+    rdata = (char *)malloc(65535);
+
+    /*  error check for rdata allocation */
+    if(!rdata){
+    	fprintf(stderr, "Sniffer: OOM\n"); // Prints Out of memory
+    	return EXIT_failure;
+    }
 
     if(!pcap_input){
         /*doesn't work with OS X*/
         sd = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
-        printf("test");
         if ( sd < 0 ){
             perror("Sniffer - socket");
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     } else {//writing for pcap output
 
@@ -1706,11 +1704,11 @@ int main(int argc, char *argv[]){
 
         if(sd < 1){
             perror("open");
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     	if(read(sd, &in_pcap_header, sizeof(in_pcap_header)) < 0){
             perror("read");
-            return EXIT_FAILURE;
+            return EXIT_failure;
     	}
 
         if(in_pcap_header.magic_number == 0xa1b2c3d4){
@@ -1727,17 +1725,17 @@ int main(int argc, char *argv[]){
             in_pcap_header.network       = endian_swap_32(in_pcap_header.network);
         }else{
             fprintf(stderr,"ERROR: Pcap file corrupt / bad magic number [%X]\n",in_pcap_header.magic_number);
-        	return EXIT_FAILURE;
+        	return EXIT_failure;
         }
 
         if(in_pcap_header.snaplen < 96){
             fprintf(stderr,"Error: Pcap file doesn't have large enough packets.\n");
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
 
         if(in_pcap_header.network != 1){
             fprintf(stderr, "Error: Sniffer only works on ethernet caps.\n");
-        	return EXIT_FAILURE;
+        	return EXIT_failure;
         }
 
         printf("pcap info:\n");
@@ -1755,7 +1753,7 @@ int main(int argc, char *argv[]){
 
         if(sl < 0){
             perror("sched_setscheduler");
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
 
@@ -1764,7 +1762,7 @@ int main(int argc, char *argv[]){
 
         if(od < 0){
             perror("Sniffer socket-out");
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
 
     	memset(&s1, 0, sizeof(struct sockaddr_ll));
@@ -1782,7 +1780,7 @@ int main(int argc, char *argv[]){
 
             if(result < 0){
                 perror("Sniffer interface");
-                return EXIT_FAILURE;
+                return EXIT_failure;
             }
         }
     }
@@ -1803,7 +1801,7 @@ int main(int argc, char *argv[]){
 
             if(result < 0) {
                 printf("unable to bind to device.\n");
-                return EXIT_FAILURE;
+                return EXIT_failure;
 
             }else{
 
@@ -1812,7 +1810,7 @@ int main(int argc, char *argv[]){
                     result = ioctl(sd, SIOCSIFFLAGS, &interface_obj);
                     if(result < 0){
                         printf("unable to set promisc.\n");
-                        return EXIT_FAILURE;
+                        return EXIT_failure;
                     }
                 }
             }
@@ -1821,7 +1819,7 @@ int main(int argc, char *argv[]){
 
         tv.tv_sec = 0;
         tv.tv_usec = 5000; /* 5ms */
-
+        memset(rdata,'\0',65536);
         FD_ZERO(&readfd);
         data = rdata;
 
@@ -1831,7 +1829,7 @@ int main(int argc, char *argv[]){
             bytes_read = select(sd+1, &readfd, NULL, NULL, &tv);
 
             if(bytes_read > 0){
-            	bytes_read = recvfrom(sd, data, sizeof(rdata), 0, (struct sockaddr *)&sa, &sl);
+            	bytes_read = recvfrom(sd, data, 65535, 0, (struct sockaddr *)&sa, &sl);
             }else{
                 bytes_read = 1;
                 continue;
@@ -1861,8 +1859,7 @@ int main(int argc, char *argv[]){
         }
 
         if ( bytes_read > 0 ){
-            res = DumpPacket(data, bytes_read, display);
-
+            res = DumpPacket(data, bytes_read-1, display);
             if(pcap_dump_file && res == 1) {
 
                 rcvtime.tv_sec = time(NULL);
@@ -1891,7 +1888,7 @@ int main(int argc, char *argv[]){
             }
         }else if(bytes_read == -1){
             perror("Sniffer read");
-            return EXIT_FAILURE;
+            return EXIT_failure;
         }
     }
     while (run && bytes_read > 0 );
@@ -1901,7 +1898,7 @@ int main(int argc, char *argv[]){
     if(pcap_dump_file){
         fclose(pcap_dump_file);
     }
-    return EXIT_SUCCESS;
+    return EXIT_success;
 }
 
 #else
