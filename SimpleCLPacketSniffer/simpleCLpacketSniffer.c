@@ -500,7 +500,7 @@ void print_usage(){
 int cap_enable(cap_value_t cap_list[]) {
 
     int cl_len = 0 ;
-
+    char * name = NULL;
     cap_t caps = cap_init();   /* all capabilities initialized to off */
 
     uid_t ruid;
@@ -565,10 +565,15 @@ int cap_enable(cap_value_t cap_list[]) {
     	perror("cap_set_proc() fail return");
     	return EXIT_failure;
     }
-
-    printf("After setting: getuid: %d geteuid: %d Capabilities : %s\n", getuid(), geteuid(), cap_to_text(caps, NULL));
+    name = cap_to_text(caps, NULL);
+    printf("After setting: getuid: %d geteuid: %d Capabilities : %s\n", getuid(), geteuid(), name);
 
     if (cap_free(caps) == -1){
+    	perror("CAP_FREE");
+    	return EXIT_failure;
+    }
+
+    if (cap_free(name) == -1){
     	perror("CAP_FREE");
     	return EXIT_failure;
     }
@@ -1844,7 +1849,7 @@ int main(int argc, char *argv[]){
 
         if(!pcap_input){
             sl = sizeof(struct sockaddr_in);
-            FD_SET(sd, &readfd);
+            tjFD_SET(sd, &readfd);
             bytes_read = select(sd+1, &readfd, NULL, NULL, &tv);
 
             if(bytes_read > 0){
@@ -1932,7 +1937,7 @@ int main(int argc, char *argv[]){
     if(pcap_dump_file){
         fclose(pcap_dump_file);
     }
-	/* NEW */
+
 	printf("Packets captured: %lu\n", pkts_rx);
 
 	if(pkts_pass != pkts_rx){
