@@ -1886,12 +1886,12 @@ int main(int argc, char *argv[]){
                 pcap_rec.orig_len = endian_swap_32(pcap_rec.orig_len);
             }
 
-            memcpy(&lasttime, &curtime, sizeof(lasttime));
-
             curtime.tv_sec = pcap_rec.ts_sec;
             curtime.tv_usec = pcap_rec.ts_usec;
 
             pcap_pkt_sleep(&curtime, &lasttime);
+
+            memcpy(&lasttime, &curtime, sizeof(lasttime));
 
             bytes_read = read(sd, data, pcap_rec.incl_len);
         }
