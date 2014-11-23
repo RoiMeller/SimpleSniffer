@@ -1904,7 +1904,7 @@ int main(int argc, char *argv[]){
 				++pkts_pass;
 			}
 
-            if(pcap_dump_file && res == 1) {
+            if(pcap_dump_file && res == 0) {
 
                 rcvtime.tv_sec = time(NULL);
                 rcvtime.tv_usec = 0;
