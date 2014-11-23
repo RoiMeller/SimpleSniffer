@@ -144,10 +144,6 @@
 #define IP_PROTO_FILTER      0x00000040
 #define UDP_TCP_SPORT_FILTER 0x00000080
 #define UDP_TCP_DPORT_FILTER 0x00000100
-#define ARBITRARY_U8_FILTER  0x00000200
-#define ARBITRARY_U16_FILTER 0x00000400
-#define ARBITRARY_U32_FILTER 0x00000800
-#define ARBITRARY_MSK_FILTER 0x00001000
 #define IP_TOS_BYTE_FILTER   0x00002000
 
 /* Hardware type - arp_hwtype_tostr() */
@@ -167,6 +163,8 @@
 
 typedef unsigned char uchar;
 typedef unsigned int uint;
+
+/*GLOBAL VAR*/
 
 /* Filter mask value for mask check and set */
 uint  filter_mask = 0;
@@ -199,22 +197,6 @@ uchar udp_tcp_sport_not = 0;
 
 uint  udp_tcp_dport_is_filter;
 uchar udp_tcp_dport_not = 0;
-
-uint  arbitrary_u8_filter_pos = 0;
-uchar arbitrary_u8_filter;
-uchar arbitrary_u8_not = 0;
-
-uint   arbitrary_u16_filter_pos = 0;
-ushort arbitrary_u16_filter;
-uchar  arbitrary_u16_not = 0;
-
-uint  arbitrary_u32_filter_pos = 0;
-uint  arbitrary_u32_filter;
-uchar arbitrary_u32_not = 0;
-
-uint  arbitrary_msk_filter_pos = 0;
-uint  arbitrary_msk_filter;
-uchar arbitrary_msk_not = 0;
 
 uchar ip_tos_byte_filter;
 uchar ip_tos_byte_filter_not = 0;
@@ -364,8 +346,7 @@ struct arp_packet {
     uint  opcode     : 16; 	// Specifies the operation that the sender is performing: 1 for request, 2 for reply.
 };
 
-/* Definitions and descriptions come from:
-    http://wiki.wireshark.org/Development/LibpcapFileFormat */
+/* Definitions and descriptions come from: http://wiki.wireshark.org/Development/LibpcapFileFormat */
 
 /* PCAP Global Header - This structure gets written to the start of the file */
 typedef struct pcap_hdr_s {
@@ -461,7 +442,6 @@ void print_usage(){
     printf("| --output <filename>			To save a .pcap file.\n");
     printf("| --input  <path>or<filename>		Specify a pcap file as the input.\n");
     printf("| --quiet                       	To suppress output.\n");
-    printf("| --rt                          	To specify realtime mode.\n");
     printf("| \n");
     printf("| Filter options:\n");
     printf("| \n");
@@ -479,10 +459,7 @@ void print_usage(){
     printf("| To specify a negative filter use --not, or ! after the filter type.\n");
     printf("| example: --ip-src --not 192.168.1.1\n");
     printf("| \n");
-    printf("| --u8, --u16, --u32			Format is <value>:<offset>\n");
-    printf("| --m32					Format is <mask>:<offset>\n");
-    printf("| \n");
-    printf("| --interface, --outerface, --promisc\n");
+    printf("| --interface\n");
     printf("| \n");
     printf("| Use Ctrl-C to stop capturing at any time.\n");
     printf("| \n");
@@ -752,12 +729,12 @@ char *GetEtherType(int eth_type)
 
 int eth_contains_ip(struct eth_packet *eth_pkt){ // eth main struct
     if(ntohs(eth_pkt->eth_type) == ETH_P_8021Q){
-        return 19;
+        return 18;
     }else if (ntohs(eth_pkt->eth_type) == ETH_P_IP){
-        return 15;
+        return 14;
     }
 
-    return 1;
+    return 0;
 }
 
 int ipcmp(uchar *ipstruct_addr, int addr){ // Struct & filtering
@@ -1108,69 +1085,11 @@ void dump(void* b, int len, FILE *dump){
 
 char DumpPacket(char *buffer, int len, int quiet)
 {
-	uint ff = 0;
-	uchar truth = NULL;
 	tcpHdr *tcph = NULL;
 	udpHdr *udph = NULL;
 
 	struct eth_packet *eth_pkt = (void *)(buffer);
 	struct ip_packet *ip = (void *)(buffer + (sizeof(eth_packet)));
-    if(FILTER_CHK_MASK(filter_mask, ARBITRARY_MSK_FILTER)){
-        ff = ntohl(*((uint*)(buffer+arbitrary_msk_filter_pos)));
-        if(len < arbitrary_msk_filter_pos+4){
-            return EXIT_failure;
-        }
-
-        truth = (FILTER_CHK_MASK(ff, arbitrary_msk_filter));
-
-        if(truth){
-            if(arbitrary_msk_not){
-                return EXIT_failure;
-            }
-        }else if (!truth){
-            return EXIT_failure;
-        }
-    }
-
-    if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U8_FILTER)){
-        if(len < arbitrary_u8_filter_pos+1){
-            return EXIT_failure;
-        }
-        if((buffer[arbitrary_u8_filter_pos] == arbitrary_u8_filter)){
-            if(arbitrary_u8_not){
-                return EXIT_failure;
-            }
-        }else if (!arbitrary_u8_not){
-            return EXIT_failure;
-        }
-    }
-
-    if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U16_FILTER)){
-        if(len < arbitrary_u16_filter_pos+2){
-            return EXIT_failure;
-        }
-        if((ntohs(*((ushort*)(buffer+arbitrary_u16_filter_pos))) == arbitrary_u16_filter)){
-            if(arbitrary_u16_not){
-                return EXIT_failure;
-            }
-        }else if(!arbitrary_u16_not){
-            return EXIT_failure;
-        }
-    }
-
-    if(FILTER_CHK_MASK(filter_mask, ARBITRARY_U32_FILTER)){
-        if(len < arbitrary_u32_filter_pos+4){
-            return EXIT_failure;
-        }
-        if((ntohl(*((uint*)(buffer+arbitrary_u32_filter_pos))) == arbitrary_u32_filter)){
-            if(arbitrary_u32_not){
-                return EXIT_failure;
-            }
-        }
-        else if (!arbitrary_u32_not){
-            return EXIT_failure;
-        }
-    }
 
     /* filter out the cruft - in userspace I know! */
     if(FILTER_CHK_MASK(filter_mask, ETH_SRC_FILTER)){
@@ -1277,7 +1196,7 @@ char DumpPacket(char *buffer, int len, int quiet)
         }
     }
 
-    if(!(eth_contains_ip(eth_pkt)-1) && need_IP == 1){
+    if(!(eth_contains_ip(eth_pkt)) && need_IP == 1){
         return EXIT_failure;
     }
 
@@ -1298,13 +1217,13 @@ char DumpPacket(char *buffer, int len, int quiet)
 
 
             if(ip->protocol == 0x06){
-                buffer = buffer + (eth_contains_ip(eth_pkt)-1);
+                buffer = buffer + (eth_contains_ip(eth_pkt));
                 buffer = buffer + (ip->header_len * 4);
                 tcph = (tcpHdr *)buffer;
             }
 
             if(ip->protocol == 0x11){
-                buffer = buffer + (eth_contains_ip(eth_pkt)-1);
+                buffer = buffer + (eth_contains_ip(eth_pkt));
                 buffer = buffer + (ip->header_len * 4);
                 udph = (udpHdr *)buffer;
             }
@@ -1414,18 +1333,18 @@ int main(int argc, char *argv[]){
 	char *data;
 	char infomercial[15]={0};
 	char *lastarg = NULL;
-	char *fpos = NULL;
 	char pcap_input = 0;
 	char pcap_byteswap = 0;
 	char *pcap_fname = NULL;
+	char *iface = NULL;
 
-	struct sockaddr_ll peerAddr;
 	struct sockaddr_ll s1;
 	struct sockaddr_in sa;
-	struct sched_param sp;
 	struct ifreq interface_obj;
 	struct timeval tv;
 	struct timeval rcvtime;
+	struct timeval lasttime = {0};
+	struct timeval curtime = {0};
 
 	uint sl;
 	uchar notflag = 0;
@@ -1435,23 +1354,11 @@ int main(int argc, char *argv[]){
 	pcaprec_hdr_t pcap_rec;
 	pcaprec_hdr_t pcap_hdr;
 
-	pid_t pid = 0 ;
 	fd_set readfd;
 
 	/* NEW */
 	unsigned long int pkts_rx = 0;
 	unsigned long int pkts_pass = 0;
-
-	/* remove */
-	int od = -1;
-	int out_phy;
-	int promisc = 0;
-	char rt = 0;
-	char *iface = NULL;
-	char *oface = NULL;
-
-	struct timeval lasttime = {0};
-	struct timeval curtime = {0};
 
     /*
 	=================================================================
@@ -1516,18 +1423,6 @@ int main(int argc, char *argv[]){
 
                 else if(!strncmp("--interface", argv[argc], 11) && lastarg != NULL){
                     iface = lastarg;
-                }
-
-                else if(!strncmp("--outerface", argv[argc], 11) && lastarg != NULL){
-                    oface = lastarg;
-                }
-
-                /* allows the interface to receive all packets that it sees whether they are addressed to the interface or not */
-                else if(!strncmp("--promisc", argv[argc], 11)){
-                    promisc = 1;
-                }
-                else if(!strncmp("--rt", argv[argc], 4)){/* RealTime */
-                    rt = 1;
                 }
 
                 else if(!strncmp("--input", argv[argc], 7) && lastarg != NULL){
@@ -1650,54 +1545,7 @@ int main(int argc, char *argv[]){
                     	udp_tcp_dport_not = 1;
                     }
                     notflag = 0;
-                }
-                else if(!strncmp("--u8", argv[argc], 10) && lastarg != NULL){
-                    fpos = NULL;
-                    FILTER_SET_MASK(filter_mask, ARBITRARY_U8_FILTER);
-                    arbitrary_u8_filter = (uchar)strtoul(lastarg, &fpos, 0);
-                    if(fpos){
-                        arbitrary_u8_filter_pos = strtoul(fpos+1, NULL, 0);
-                    }
-                    if(notflag){
-                    	arbitrary_u8_not = 1;
-                    }
-                    notflag = 0;
-                }
-                else if(!strncmp("--u16", argv[argc], 10) && lastarg != NULL){
-                    fpos = NULL;
-                    FILTER_SET_MASK(filter_mask, ARBITRARY_U16_FILTER);
-                    arbitrary_u16_filter = (ushort)strtoul(lastarg, &fpos, 0);
-                    if(fpos){
-                        arbitrary_u16_filter_pos = strtoul(fpos+1, NULL, 0);
-                    }
-                    if(notflag){
-                    	arbitrary_u16_not = 1;
-                    }
-                    notflag = 0;
-                }
-                else if(!strncmp("--u32", argv[argc], 10) &&lastarg != NULL){
-                    fpos = NULL;
-                    FILTER_SET_MASK(filter_mask, ARBITRARY_U32_FILTER);
-                    arbitrary_u32_filter = (uint)strtoul(lastarg, &fpos, 0);
-                    if(fpos){
-                        arbitrary_u32_filter_pos = strtoul(fpos+1, NULL, 0);
-                    }
-                    if(notflag){
-                    	arbitrary_u32_not = 1;
-                    }
-                    notflag = 0;
-                }
-                else if(!strncmp("--m32", argv[argc], 10) && lastarg != NULL){
-                    fpos = NULL;
-                    FILTER_SET_MASK(filter_mask, ARBITRARY_MSK_FILTER);
-                    arbitrary_msk_filter = (uint)strtoul(lastarg, &fpos, 0);
-                    if(fpos){
-                        arbitrary_msk_filter_pos = strtoul(fpos+1, NULL, 0);
-                    }
-                    if(notflag){
-                    	arbitrary_msk_not = 1;
-                    }
-                    notflag = 0;
+
                 }else{
                     printf("UNKNOWN OPTION, %s,%s\n", argv[argc], lastarg);
                     print_usage();
@@ -1757,11 +1605,6 @@ int main(int argc, char *argv[]){
         	return EXIT_failure;
         }
 
-        if(in_pcap_header.snaplen < 96){
-            fprintf(stderr,"Error: Pcap file doesn't have large enough packets.\n");
-            return EXIT_failure;
-        }
-
         if(in_pcap_header.network != 1){
             fprintf(stderr, "Error: Sniffer only works on ethernet caps.\n");
         	return EXIT_failure;
@@ -1772,46 +1615,6 @@ int main(int argc, char *argv[]){
         printf("tz:      %d\n", in_pcap_header.thiszone);
         printf("snaplen: %u\n", in_pcap_header.snaplen);
         printf("version: %d.%d\n", in_pcap_header.version_major, in_pcap_header.version_minor);
-    }
-
-    if(rt){
-
-        pid = getpid();
-        sp.sched_priority = 77; /* - magic number - a high priority */
-        sl = sched_setscheduler(pid, SCHED_FIFO, &sp);
-
-        if(sl < 0){
-            perror("sched_setscheduler");
-            return EXIT_failure;
-        }
-    }
-
-    if(oface){
-        od = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
-
-        if(od < 0){
-            perror("Sniffer socket-out");
-            return EXIT_failure;
-        }
-
-    	memset(&s1, 0, sizeof(struct sockaddr_ll));
-    	strcpy((char *)interface_obj.ifr_name, oface);
-
-    	result = ioctl(sd, SIOCGIFINDEX, &interface_obj);
-
-    	if(result >= 0) {
-    		result = interface_obj.ifr_ifindex;
-            s1.sll_family = SOCK_FAM_TYPE;
-            s1.sll_ifindex = result;
-            s1.sll_protocol = SOCK_PROTO_TYPE;
-            out_phy = result;
-            result = bind(od, (struct sockaddr *)&s1, sizeof(s1));
-
-            if(result < 0){
-                perror("Sniffer interface");
-                return EXIT_failure;
-            }
-        }
     }
 
     if(iface){
@@ -1832,16 +1635,6 @@ int main(int argc, char *argv[]){
                 printf("unable to bind to device.\n");
                 return EXIT_failure;
 
-            }else{
-
-                if(promisc && ((interface_obj.ifr_flags & IFF_PROMISC) != IFF_PROMISC)){
-                    interface_obj.ifr_flags |= IFF_PROMISC;
-                    result = ioctl(sd, SIOCSIFFLAGS, &interface_obj);
-                    if(result < 0){
-                        printf("unable to set promisc.\n");
-                        return EXIT_failure;
-                    }
-                }
             }
         }
     }do {
@@ -1899,6 +1692,7 @@ int main(int argc, char *argv[]){
         if ( bytes_read > 0 ){
 
             res = DumpPacket(data, bytes_read, display);
+            ++pkts_rx;
 
 			if(!res) {
 				++pkts_pass;
@@ -1920,29 +1714,15 @@ int main(int argc, char *argv[]){
                 fflush(pcap_dump_file);
             }
 
-            if(oface && od && res == 1){
-                memset(&peerAddr, 0, sizeof(struct sockaddr_ll));
-
-                peerAddr.sll_family   = PF_PACKET;
-                peerAddr.sll_protocol = htons(ETH_P_ALL);
-                peerAddr.sll_halen    = 6;
-                peerAddr.sll_ifindex  = out_phy;
-                peerAddr.sll_pkttype  = PACKET_OTHERHOST;
-                memcpy(peerAddr.sll_addr, data, 6);
-                sendto(od, data, bytes_read, 0, (struct sockaddr *)&peerAddr, sizeof(peerAddr));
-            }
         }else if(bytes_read == -1){
             perror("Sniffer read");
             return EXIT_failure;
         }
-
-        if(bytes_read){
-			++pkts_rx;
-		}
     }
     while (run && bytes_read > 0 );
 
     printf("\nTerminating...\n");
+    free(rdata);
 
     if(pcap_dump_file){
         fclose(pcap_dump_file);
