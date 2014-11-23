@@ -1073,7 +1073,7 @@ int atoip(const char *pIpStr)
 
 /*
  ============================================================================
- brief dump the len bytes pointed to by b to file out.
+ Dump the len bytes pointed to by b to file out.
 
  param b A block of memory
  param len The number of bytes to dump
@@ -1557,7 +1557,7 @@ int main(int argc, char *argv[]){
                     pcap_header.snaplen       = 65535;
                     pcap_header.network       = 1;
 
-                    fwrite((void *)&pcap_header, sizeof(pcap_header), 1,pcap_dump_file);
+                    fwrite((void *)&pcap_header, sizeof(pcap_header), 1, pcap_dump_file);
                     fflush(pcap_dump_file);
                     notflag = 0;
                 }
@@ -1721,11 +1721,11 @@ int main(int argc, char *argv[]){
         sd = socket(SOCK_FAM_TYPE, SOCK_RAW, SOCK_PROTO_TYPE);
 
         if ( sd < 0 ){
-            perror("Sniffer - socket");
+            perror("socket");
             return EXIT_failure;
         }
 
-    } else { //writing for pcap output
+    } else { //writing pcap output
 
         sd = open(pcap_fname, O_RDWR); // open flag O_RDWR Permits all system calls to be executed.
 
@@ -1733,6 +1733,7 @@ int main(int argc, char *argv[]){
             perror("open");
             return EXIT_failure;
         }
+
     	if(read(sd, &in_pcap_header, sizeof(in_pcap_header)) < 0){
             perror("read");
             return EXIT_failure;
@@ -1750,6 +1751,7 @@ int main(int argc, char *argv[]){
             in_pcap_header.sigfigs       = endian_swap_32(in_pcap_header.sigfigs);
             in_pcap_header.snaplen       = endian_swap_32(in_pcap_header.snaplen);
             in_pcap_header.network       = endian_swap_32(in_pcap_header.network);
+
         }else{
             fprintf(stderr,"ERROR: Pcap file corrupt / bad magic number [%X]\n",in_pcap_header.magic_number);
         	return EXIT_failure;
@@ -1766,7 +1768,7 @@ int main(int argc, char *argv[]){
         }
 
         printf("pcap info:\n");
-        printf("network: Ethernet\n");
+        printf("network: Ethernet (always)\n");
         printf("tz:      %d\n", in_pcap_header.thiszone);
         printf("snaplen: %u\n", in_pcap_header.snaplen);
         printf("version: %d.%d\n", in_pcap_header.version_major, in_pcap_header.version_minor);
@@ -1847,7 +1849,8 @@ int main(int argc, char *argv[]){
         tv.tv_sec = 0;
         tv.tv_usec = 5000; /* 5ms */
 
-        memset(rdata,'\0',65536);
+//      memset(rdata,'\0',65535);
+
         FD_ZERO(&readfd);
         data = rdata;
 
@@ -1858,6 +1861,7 @@ int main(int argc, char *argv[]){
 
             if(bytes_read > 0){
 				bytes_read = recvfrom(sd, data, 65535, 0, (struct sockaddr *)&sa, &sl);
+
 				rcvtime.tv_sec = time(NULL);
 				/* we do this because on some platforms, notably embedded,
 				gettimeofday can "forget" to populate tv_sec. */
@@ -1893,9 +1897,10 @@ int main(int argc, char *argv[]){
         }
 
         if ( bytes_read > 0 ){
-            res = DumpPacket(data, bytes_read-1, display);
 
-			if(res == 1) {
+            res = DumpPacket(data, bytes_read, display);
+
+			if(!res) {
 				++pkts_pass;
 			}
 
@@ -1909,6 +1914,7 @@ int main(int argc, char *argv[]){
                 pcap_hdr.ts_usec = rcvtime.tv_usec;
                 pcap_hdr.incl_len = bytes_read;
                 pcap_hdr.orig_len = bytes_read;
+
                 fwrite((void *)&pcap_hdr, sizeof(pcap_hdr), 1, pcap_dump_file);
                 fwrite((void *)data, 1, bytes_read, pcap_dump_file);
                 fflush(pcap_dump_file);
