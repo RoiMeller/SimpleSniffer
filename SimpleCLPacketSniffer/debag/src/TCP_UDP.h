@@ -4,12 +4,6 @@
 # include <error.h>
 # include <errno.h>
 
-/* GLOBAL VARIABLES */
-uint  udp_tcp_sport_is_filter;
-uchar udp_tcp_sport_not = 0;
-
-uint  udp_tcp_dport_is_filter;
-uchar udp_tcp_dport_not = 0;
 
 /* STRUCTS */
 struct tcpudp_port_header {

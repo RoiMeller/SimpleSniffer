@@ -4,6 +4,7 @@
 # include <stdio.h>				// For standard things
 # include <time.h>
 
+
 /* Global declaration */
 # define ERROR_PRINT perror
 # define EXIT_success 0
@@ -28,22 +29,52 @@
 /* Defining a parameterized macro */
 #define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b) // The function check for mask value in mask filter
 #define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
+#define ETH_ALEN 6
 
-typedef unsigned char uchar;
 typedef unsigned int uint;
+typedef unsigned char uchar;
 
-/* Global variable */
-int run = 1;
+struct filter {
+  uchar eth_src_is_mac_filter[ETH_ALEN];
+  uchar eth_src_not;
 
-/* Filter mask value for mask check and set */
-uint  filter_mask = 0;
+  uchar eth_dst_is_mac_filter[ETH_ALEN];
+  uchar eth_dst_not;
+
+  uint eth_type_is_filter;
+  uchar eth_type_not;
+
+  uint eth_vlan_is_filter;
+  uchar eth_vlan_not;
+  uint filter_mask ;
+
+  uint need_IP ;
+  uint ip_src_is_filter;
+  uchar ip_src_not;
+
+  uint ip_dst_is_filter;
+  uchar ip_dst_not;
+
+  uint ipproto_is_filter;
+  uchar ipproto_not ;
+
+  uchar ip_tos_byte_filter;
+  uchar ip_tos_byte_filter_not ;
+
+  uint udp_tcp_sport_is_filter;
+  uchar udp_tcp_sport_not ;
+
+  uint udp_tcp_dport_is_filter;
+  uchar udp_tcp_dport_not ;
+
+};
 
 /* Function decloration */
 void print_usage();
 unsigned char convertAsciiHexCharToBin(char asciiHexChar);
 unsigned int ascii_to_bin(char *str_bin);
 void dump(void* b, int len, FILE *dump);
-char DumpPacket(char *buffer, int len, int quiet);
+char DumpPacket(char *buffer, int len, int quiet,struct filter *filter);
 int sniff_nano_sleep(const struct timespec *req, struct timespec *remain);
 void terminate_hnd(int sig);
 

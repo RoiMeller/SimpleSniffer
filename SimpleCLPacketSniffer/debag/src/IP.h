@@ -1,8 +1,10 @@
 #ifndef IP_H_
 #define IP_H_
 
+# include "GOhdr.h"
 /* Global declaration */
 # define IP_SIZE  4
+
 
 /*
  ============================================================================
@@ -55,22 +57,12 @@ struct ip_packet {
     uchar data[0];					/* message data up to 64KB */
 };
 
-/* GLOBAL VARIABLES */
-uint  need_IP = 0;
-uint  ip_src_is_filter;
-uchar ip_src_not = 0;
 
-uint  ip_dst_is_filter;
-uchar ip_dst_not = 0;
-
-uint  ipproto_is_filter;
-uchar ipproto_not = 0;
-
-uchar ip_tos_byte_filter;
-uchar ip_tos_byte_filter_not = 0;
 
 /* Function declaration */
 int ipcmp(uchar *ipstruct_addr, int addr);
 int atoip(const char *pIpStr);
+char *GetProtocol(uint value);
+
 
 #endif /* IP_H_ */

@@ -75,25 +75,9 @@ struct eth_8021q_packet {
     uint  ether_type:16;
 };
 
-/* GLOBAL Ethernet VARIABLES */
-uchar eth_src_is_mac_filter[ETH_ALEN];
-uchar eth_src_not = 0;
-
-uchar eth_dst_is_mac_filter[ETH_ALEN];
-uchar eth_dst_not = 0;
-
-uint  eth_type_is_filter;
-uchar eth_type_not = 0;
-
-uint  eth_vlan_is_filter;
-uchar eth_vlan_not = 0;
-
 /* Ethernet Function Declaration */
 char *GetEtherType(int eth_type);
 int eth_contains_ip(struct eth_packet *eth_pkt);
-void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, EAddress is_ip);
-void PrintAddr(char* msg, unsigned char *addr, EAddress is_ip);
-char *GetProtocol(uint value);
 int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr);
 int ethtype_cmp(uint retr_type, uint filter_type);
 int ethvlan_cmp(struct eth_packet *eth_pkt, uint vlan_tag);

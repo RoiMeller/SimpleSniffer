@@ -2,11 +2,10 @@
 
 CC = gcc
 CFLAGS += -g -Wall
-
 LFLAGS += -lcap
 
 OUTPUT += simpleCLpacketSniffer
-OBJS += Ethernet.o ARP.o IP.o TCP_UDP.o  WSPCAP.o GOhdr.o simpleCLpacketSniffer.o 
+OBJS = ARP.o Ethernet.o  IP.o TCP_UDP.o  WSPCAP.o GOhdr.o simpleCLpacketSniffer.o 
 
 default: all
 
@@ -16,7 +15,7 @@ default: all
 
 $(OUTPUT): $(OBJS)
 	@echo "Linking " $@
-	@$(CC) $< $(LFLAGS) -o $@
+	$(CC) $(OBJS) $(LFLAGS) -o $@
 
 all: $(OUTPUT)
 

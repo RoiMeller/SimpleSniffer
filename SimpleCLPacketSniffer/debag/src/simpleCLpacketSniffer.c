@@ -71,6 +71,215 @@
 # include "TCP_UDP.h"
 # include "ARP.h"
 
+/* GLOBAL Ethernet VARIABLES */
+
+
+static int run = 1;
+
+
+void terminate_hnd(int sig){
+    run = 0;
+}
+char DumpPacket(char *buffer, int len, int quiet, struct filter *filter){
+	tcpHdr *tcph = NULL;
+	udpHdr *udph = NULL;
+
+	struct eth_packet *eth_pkt = (void *)(buffer);
+	struct ip_packet *ip = (void *)(buffer + (sizeof(eth_packet)));
+
+    /* filter out the cruft - in userspace I know! */
+    if(FILTER_CHK_MASK(filter->filter_mask, ETH_SRC_FILTER)){
+        if(!ethmask_cmp(eth_pkt->src_mac, filter->eth_src_is_mac_filter)){
+            if(filter->eth_src_not){
+                return EXIT_failure;
+            }
+        }else if(!filter->eth_src_not){
+            return EXIT_failure;
+        }
+    }
+
+    if(FILTER_CHK_MASK(filter->filter_mask, ETH_DST_FILTER)){
+        if(!ethmask_cmp(eth_pkt->dst_mac, filter->eth_dst_is_mac_filter)){
+            if(filter->eth_dst_not){
+                return EXIT_failure;
+            }
+        }else if (!filter->eth_dst_not){
+            return EXIT_failure;
+        }
+    }
+
+    if(FILTER_CHK_MASK(filter->filter_mask, ETH_TYPE_FILTER)){
+        if(!ethtype_cmp(ntohs(eth_pkt->eth_type), filter->eth_type_is_filter)){
+            if(filter->eth_type_not){
+                return EXIT_failure;
+            }
+        }else if(!filter->eth_type_not){
+            return EXIT_failure;
+        }
+    }
+
+    if(FILTER_CHK_MASK(filter->filter_mask, ETH_VLAN_FILTER)){
+        if(!ethvlan_cmp(eth_pkt, filter->eth_vlan_is_filter)){
+            if(filter->eth_vlan_not){
+                return EXIT_failure;
+            }
+        }else if(!filter->eth_vlan_not){
+            return EXIT_failure;
+        }
+    }
+
+    if(eth_contains_ip(eth_pkt)){
+        ip = (void *)(buffer + (eth_contains_ip(eth_pkt)));
+
+        if(FILTER_CHK_MASK(filter->filter_mask, IP_SRC_FILTER)){
+            if(ipcmp(ip->ip_src.IPv4_src, filter->ip_src_is_filter)){
+                if(filter->ip_src_not){
+                    return EXIT_failure;
+                }
+            }else if(!filter->ip_src_not){
+                return EXIT_failure;
+            }
+        }
+
+        if(FILTER_CHK_MASK(filter->filter_mask, IP_DST_FILTER)){
+            if(ipcmp(ip->ip_dst.IPv4_dst,filter->ip_dst_is_filter)){
+                if(filter->ip_dst_not){
+                    return EXIT_failure;
+                }
+            }else if(!filter->ip_dst_not){
+                return EXIT_failure;
+            }
+        }
+
+        if(FILTER_CHK_MASK(filter->filter_mask, IP_TOS_BYTE_FILTER)){
+            if(ip->serve_type == filter->ip_tos_byte_filter){
+                if(filter->ip_tos_byte_filter_not){
+                    return EXIT_failure;
+                }
+            }else if (!filter->ip_tos_byte_filter_not){
+                return EXIT_failure;
+            }
+        }
+
+        if(FILTER_CHK_MASK(filter->filter_mask, IP_PROTO_FILTER)){
+            if(ip->protocol == filter->ipproto_is_filter){
+                if(filter->ipproto_not){
+                    return EXIT_failure;
+                }
+            }else if (!filter->ipproto_not){
+                return EXIT_failure;
+            }
+        }
+
+        if(FILTER_CHK_MASK(filter->filter_mask, UDP_TCP_SPORT_FILTER)){
+            if(!udptcp_sport_cmp(ip, filter->udp_tcp_sport_is_filter)){
+                if(filter->udp_tcp_sport_not){
+                    return EXIT_failure;
+                }
+            }else if(!filter->udp_tcp_sport_not){
+                return EXIT_failure;
+            }
+        }
+
+        if(FILTER_CHK_MASK(filter->filter_mask, UDP_TCP_DPORT_FILTER)){
+            if(udptcp_sport_cmp(ip, filter->udp_tcp_dport_is_filter)){
+                if(filter->udp_tcp_dport_not){
+                    return EXIT_failure;
+                }
+            }else if(!filter->udp_tcp_dport_not){
+                return EXIT_failure;
+            }
+        }
+    }
+
+    if(!(eth_contains_ip(eth_pkt)) && filter->need_IP == 1){
+        return EXIT_failure;
+    }
+
+    if(quiet){ // if quiet equal to 1 = display
+        printf("-------------------------------------------------\n");
+        dump(buffer, len, NULL);
+
+        PrintAddr("Destination EtherID=", eth_pkt->dst_mac, eETH_ADDR);
+        PrintAddr(", Source EtherID=", eth_pkt->src_mac, eETH_ADDR);
+        printf("\nEthertype=%s", GetEtherType(ntohs(eth_pkt->eth_type)));
+
+        PrintExtraEtherInfo(eth_pkt);
+        if(eth_contains_ip(eth_pkt)){
+
+        	tcph = NULL;
+        	udph = NULL;
+
+            if(ip->protocol == 0x06){
+                buffer = buffer + (eth_contains_ip(eth_pkt));
+                buffer = buffer + (ip->header_len * 4);
+                tcph = (tcpHdr *)buffer;
+            }
+
+            if(ip->protocol == 0x11){
+                buffer = buffer + (eth_contains_ip(eth_pkt));
+                buffer = buffer + (ip->header_len * 4);
+                udph = (udpHdr *)buffer;
+            }
+
+            printf("\nIPv%d: header-len=%d, type=%d, packet-size=%d, ID=%d\n",ip->version, ip->header_len*4, ip->serve_type,ntohs(ip->packet_len), ntohs(ip->ID));
+            printf("no-frag=%c, more=%c, offset=%d, TTL=%d, protocol=%s\n",(ip->dont_frag? 'N': 'Y'),(ip->more_frags? 'N': 'Y'),ip->frag_offset,ip->time_to_live, GetProtocol(ip->protocol));
+            printf("checksum=%x", ntohs(ip->hdr_chksum));
+
+            ip->hdr_chksum = 0;
+            ip->hdr_chksum = (unsigned short)checksum((unsigned short *)ip,ip->header_len*4);
+
+            printf(" C:[%x], ", ntohs(ip->hdr_chksum));
+            PrintAddr("source=", ip->ip_src.IPv4_src, eIP_ADDR);
+            PrintAddr(", destination=", ip->ip_dst.IPv4_dst, eIP_ADDR);
+            printf("\n");
+
+            if(tcph){
+                printf("TCP Flags: ");
+                if(tcph->options.flags.urg){
+                    printf("URG ");
+                }
+                if(tcph->options.flags.ack){
+                    printf("ACK ");
+                }
+                if(tcph->options.flags.psh){
+                    printf("PSH ");
+                }
+                if(tcph->options.flags.rst){
+                    printf("RST ");
+                }
+                if(tcph->options.flags.syn){
+                    printf("SYN ");
+                }
+                if(tcph->options.flags.fin){
+                    printf("FIN ");
+                }
+                printf("\n");
+
+                printf("[TCP] transport layer cksum=%x", tcph->cksum);
+                tcph->cksum = 0;
+                printf(",calc'd=%x",  (unsigned short) get_tcp_checksum(ip, tcph));
+                printf(",sport=%d,dport=%d", ntohs(tcph->srcPort),
+                       ntohs(tcph->dstPort));
+            }
+            else if (udph){
+            	unsigned short cksum;
+                printf("[UDP] transport layer cksum=%x", udph->cksum);
+                cksum = udph->cksum;
+                udph->cksum = 0;
+                printf(",calc'd=%x",  cksum ? (unsigned short) get_udp_checksum(ip, udph) : 0);
+                printf(",sport=%d,dport=%d", ntohs(udph->srcPort),ntohs(udph->dstPort));
+            }
+
+
+        }
+        printf("\n");
+        fflush(stdout);
+    }
+
+    return EXIT_success;
+}
+
 /* MAIN */
 int main(int argc, char *argv[]){
 
@@ -99,7 +308,7 @@ int main(int argc, char *argv[]){
 	struct timeval rcvtime;
 	struct timeval lasttime = {0};
 	struct timeval curtime = {0};
-
+	struct filter filter = {{0}};
 	uint sl;
 	uchar notflag = 0;
 
@@ -133,6 +342,9 @@ int main(int argc, char *argv[]){
 		printf("This program must run as root\n");
 		return EXIT_failure;
 	}
+
+
+
 
     /*
      =================================================================
@@ -211,92 +423,92 @@ int main(int argc, char *argv[]){
                     notflag = 0;
                 }
                 else if(!strncmp("--vlan-id", argv[argc], 9) && lastarg != NULL){
-                    FILTER_SET_MASK(filter_mask, ETH_VLAN_FILTER);
-                    eth_vlan_is_filter = strtol(lastarg,NULL,0);
+                    FILTER_SET_MASK(filter.filter_mask, ETH_VLAN_FILTER);
+                    filter.eth_vlan_is_filter = strtol(lastarg,NULL,0);
                     if(notflag){
-                    	eth_vlan_not = 1;
+                    	filter.eth_vlan_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--eth-src", argv[argc], 9) && lastarg != NULL){
-                    FILTER_SET_MASK(filter_mask, ETH_SRC_FILTER);
+                    FILTER_SET_MASK(filter.filter_mask, ETH_SRC_FILTER);
                     memcpy(infomercial, lastarg, 12);
                     ascii_to_bin(infomercial);
-                    memcpy(eth_src_is_mac_filter, infomercial, 6);
+                    memcpy(filter.eth_src_is_mac_filter, infomercial, 6);
                     if(notflag){
-                    	eth_src_not = 1;
+                    	filter.eth_src_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--eth-dst", argv[argc], 9) && lastarg != NULL){
-                    FILTER_SET_MASK(filter_mask, ETH_DST_FILTER);
+                    FILTER_SET_MASK(filter.filter_mask, ETH_DST_FILTER);
                     memcpy(infomercial, lastarg, 12);
                     ascii_to_bin(infomercial);
-                    memcpy(eth_dst_is_mac_filter, infomercial, 6);
+                    memcpy(filter.eth_dst_is_mac_filter, infomercial, ETH_ALEN);
                     if(notflag){
-                    	eth_dst_not = 1;
+                    	filter.eth_dst_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--eth-type", argv[argc], 10) && lastarg != NULL){
-                    FILTER_SET_MASK(filter_mask, ETH_TYPE_FILTER);
-                    eth_type_is_filter = strtol(lastarg, NULL, 0);
+                    FILTER_SET_MASK(filter.filter_mask, ETH_TYPE_FILTER);
+                    filter.eth_type_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	eth_type_not = 1;
+                    	filter.eth_type_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-src", argv[argc], 7) && lastarg != NULL){
-                    need_IP = 1;
-                    FILTER_SET_MASK(filter_mask, IP_SRC_FILTER);
-                    ip_src_is_filter = atoip(lastarg);
+                	filter.need_IP = 1;
+                    FILTER_SET_MASK(filter.filter_mask, IP_SRC_FILTER);
+                    filter.ip_src_is_filter = atoip(lastarg);
                     if(notflag){
-                    	ip_src_not = 1;
+                    	filter.ip_src_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-dst", argv[argc], 7) &&lastarg != NULL){
-                    need_IP = 1;
-                    FILTER_SET_MASK(filter_mask, IP_DST_FILTER);
-                    ip_dst_is_filter = atoip(lastarg);
+                	filter.need_IP = 1;
+                    FILTER_SET_MASK(filter.filter_mask, IP_DST_FILTER);
+                    filter.ip_dst_is_filter = atoip(lastarg);
                     if(notflag){
-                    	ip_dst_not = 1;
+                    	filter.ip_dst_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-tos", argv[argc], 8) &&lastarg != NULL){
-                    need_IP = 1;
-                    FILTER_SET_MASK(filter_mask, IP_TOS_BYTE_FILTER);
-                    ip_tos_byte_filter = strtol(lastarg, NULL, 0);
+                	filter.need_IP = 1;
+                    FILTER_SET_MASK(filter.filter_mask, IP_TOS_BYTE_FILTER);
+                    filter.ip_tos_byte_filter = strtol(lastarg, NULL, 0);
                     if(notflag) {
-                    	ip_tos_byte_filter_not = 1;
+                    	filter.ip_tos_byte_filter_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-proto", argv[argc], 10) && lastarg != NULL){
-                    need_IP = 1;
-                    FILTER_SET_MASK(filter_mask, IP_PROTO_FILTER);
-                    ipproto_is_filter = strtol(lastarg, NULL, 0);
+                	filter.need_IP = 1;
+                    FILTER_SET_MASK(filter.filter_mask, IP_PROTO_FILTER);
+                    filter.ipproto_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	ipproto_not = 1;
+                    	filter.ipproto_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-sport", argv[argc], 10) && lastarg != NULL){
-                    need_IP = 1;
-                    FILTER_SET_MASK(filter_mask, UDP_TCP_SPORT_FILTER);
-                    udp_tcp_sport_is_filter = strtol(lastarg, NULL, 0);
+                	filter.need_IP = 1;
+                    FILTER_SET_MASK(filter.filter_mask, UDP_TCP_SPORT_FILTER);
+                    filter.udp_tcp_sport_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	udp_tcp_sport_not = 1;
+                    	filter.udp_tcp_sport_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-dport", argv[argc], 10) && lastarg != NULL){
-                    need_IP = 1;
-                    FILTER_SET_MASK(filter_mask, UDP_TCP_DPORT_FILTER);
-                    udp_tcp_dport_is_filter = strtol(lastarg, NULL, 0);
+                	filter.need_IP = 1;
+                    FILTER_SET_MASK(filter.filter_mask, UDP_TCP_DPORT_FILTER);
+                    filter.udp_tcp_dport_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	udp_tcp_dport_not = 1;
+                    	filter.udp_tcp_dport_not = 1;
                     }
                     notflag = 0;
 
@@ -445,7 +657,7 @@ int main(int argc, char *argv[]){
 
         if ( bytes_read > 0 ){
 
-            res = DumpPacket(data, bytes_read, display);
+            res = DumpPacket(data, bytes_read, display,&filter);
             ++pkts_rx;
 
 			if(!res) {

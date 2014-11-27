@@ -2,9 +2,38 @@
 
 # include "ARP.h"
 # include "GOhdr.h"
-# include "Ethernet.h"
+
 
 /* ARP Function */
+
+/* Get Ethernet address */
+void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, EAddress is_ip) {
+
+	int i = 0;
+	int l = 0;
+
+	static struct {
+        int len;
+        char *fmt;
+        char delim;
+    } addr_fmt[] = {{ETH_ALEN, "%x", ':'}, {IP_SIZE, "%d", '.'}};
+
+    if(msg != NULL){
+        l += snprintf(buf, buflen, "%s", msg);
+    }
+
+    for ( i = 0; i < addr_fmt[is_ip].len; i++ ){
+        if(l < buflen){
+        	l += snprintf(buf+l, buflen - l, addr_fmt[is_ip].fmt, addr[i]);
+        }
+        if ( i < addr_fmt[is_ip].len-1 ){
+            if(l < buflen){
+            	buf[l++] = addr_fmt[is_ip].delim;
+            }
+        }
+    }
+}
+
 
 /* ARP HW type to string */
 char *arp_hwtype_tostr(unsigned short hwtype){
@@ -49,6 +78,16 @@ char *arp_target_proto(struct arp_packet *arp){
     WriteAddr(buf, 80, NULL, tgt_proto_start, eIP_ADDR);
     return buf;
 }
+
+/* Print Ethernet address */
+void PrintAddr(char* msg, unsigned char *addr, EAddress is_ip) {
+	char buf[8192] = {0};
+
+    WriteAddr(buf, 8192, msg, addr, is_ip);
+    printf("%s", buf);
+}
+
+
 
 char *arp_target_hw(struct arp_packet *arp){
     unsigned char *tgt_hw_start;

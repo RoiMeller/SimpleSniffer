@@ -8,6 +8,28 @@
 # include "GOhdr.h"
 # include "IP.h"
 
+
+/* <netinet/in.h> Standard well-defined IP protocols. */
+char *GetProtocol(uint value){
+
+	static char protohex[5] = {0};
+
+	switch (value){
+		case IPPROTO_IP: return "IP"; 		/* Dummy protocol for TCP.  */
+		case IPPROTO_ICMP: return "ICMP"; 	/* Internet Control Message Protocol.  */
+		case IPPROTO_IGMP: return "IGMP"; 	/* IPIP tunnels (older KA9Q tunnels use 94).  */
+		case IPPROTO_TCP: return "TCP"; 	/* Transmission Control Protocol.  */
+		case IPPROTO_PUP: return "PUP";
+		case IPPROTO_UDP: return "UDP"; 	/* User Datagram Protocol.  */
+		case IPPROTO_IDP: return "IDP";
+		case IPPROTO_IPV6: return "IPV 	6/4";
+		case IPPROTO_RAW: return "RAW"; 	/* Raw IP packets.  */
+	default:
+		snprintf(protohex, 5, "0x%02x", value);
+		return protohex;
+    }
+}
+
 int ipcmp(uchar *ipstruct_addr, int addr){
 
 	int ipstr_addr = *((int*)ipstruct_addr);

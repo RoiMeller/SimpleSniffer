@@ -2,10 +2,10 @@
 
 # include "Ethernet.h"
 # include "GOhdr.h"
-# include "IP.h"
 # include "ARP.h"
 
 /* Ethernet Function */
+
 
 /* <linux/if_ether.h> These are the defined Ethernet Protocol ID's. */
 char *GetEtherType(int eth_type){
@@ -35,62 +35,8 @@ int eth_contains_ip(struct eth_packet *eth_pkt){ // eth main struct
     return 0;
 }
 
-/* Get Ethernet address */
-void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, EAddress is_ip) {
 
-	int i = 0;
-	int l = 0;
 
-	static struct {
-        int len;
-        char *fmt;
-        char delim;
-    } addr_fmt[] = {{ETH_ALEN, "%x", ':'}, {IP_SIZE, "%d", '.'}};
-
-    if(msg != NULL){
-        l += snprintf(buf, buflen, "%s", msg);
-    }
-
-    for ( i = 0; i < addr_fmt[is_ip].len; i++ ){
-        if(l < buflen){
-        	l += snprintf(buf+l, buflen - l, addr_fmt[is_ip].fmt, addr[i]);
-        }
-        if ( i < addr_fmt[is_ip].len-1 ){
-            if(l < buflen){
-            	buf[l++] = addr_fmt[is_ip].delim;
-            }
-        }
-    }
-}
-
-/* Print Ethernet address */
-void PrintAddr(char* msg, unsigned char *addr, EAddress is_ip) {
-	char buf[8192] = {0};
-
-    WriteAddr(buf, 8192, msg, addr, is_ip);
-    printf("%s", buf);
-}
-
-/* <netinet/in.h> Standard well-defined IP protocols. */
-char *GetProtocol(uint value){
-
-	static char protohex[5] = {0};
-
-	switch (value){
-		case IPPROTO_IP: return "IP"; 		/* Dummy protocol for TCP.  */
-		case IPPROTO_ICMP: return "ICMP"; 	/* Internet Control Message Protocol.  */
-		case IPPROTO_IGMP: return "IGMP"; 	/* IPIP tunnels (older KA9Q tunnels use 94).  */
-		case IPPROTO_TCP: return "TCP"; 	/* Transmission Control Protocol.  */
-		case IPPROTO_PUP: return "PUP";
-		case IPPROTO_UDP: return "UDP"; 	/* User Datagram Protocol.  */
-		case IPPROTO_IDP: return "IDP";
-		case IPPROTO_IPV6: return "IPV 	6/4";
-		case IPPROTO_RAW: return "RAW"; 	/* Raw IP packets.  */
-	default:
-		snprintf(protohex, 5, "0x%02x", value);
-		return protohex;
-    }
-}
 
 int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr){ // // Struct & filtering
     int i =0 ;
@@ -126,7 +72,7 @@ void PrintExtraEtherInfo(struct eth_packet *eth_pkt){
     struct eth_8021q_packet *q_pkt = (void *)(eth_pkt);
 
     if(!ethtype_cmp(ntohs(eth_pkt->eth_type), ETH_P_8021Q)){
-        printf(",vlan_prio=%d,cfi=%c,vlan_id=%d\nVlanEtherType=%s", q_pkt->priority, q_pkt->cfi ? 'T' : 'F', ntohs(q_pkt->vlan_id),GetEtherType(ntohs(q_pkt->ether_type)));
+        printf(",vlan_prio = %d, cfi = %c ,vlan_id = %d\nVlanEtherType=%s", q_pkt->priority, q_pkt->cfi ? 'T' : 'F', ntohs(q_pkt->vlan_id),GetEtherType(ntohs(q_pkt->ether_type)));
         return;
     }
 

@@ -1,8 +1,9 @@
 #ifndef ARP_H_
 #define ARP_H_
 
-# include "GOhdr.h"
 
+# include "Ethernet.h"
+# include "GOhdr.h"
 /* Global ARP definition */
 
 /* Hardware type - arp_hwtype_tostr() */
@@ -37,5 +38,7 @@ char *arp_sender_proto(struct arp_packet *arp);
 char *arp_sender_hw(struct arp_packet *arp);
 char *arp_target_proto(struct arp_packet *arp);
 char *arp_hwtype_tostr(unsigned short hwtype);
+void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, EAddress is_ip);
+void PrintAddr(char* msg, unsigned char *addr, EAddress is_ip);
 
 #endif /* ARP_H_ */
