@@ -3,11 +3,10 @@
 CC = gcc
 CFLAGS += -g -Wall
 
-# add the path to my library code; -L tells the linker where to find it
-LFLAGS += -L /home/hagai/git/SimpleSniffer/SimpleCLPacketSniffer/debag/src -lcap
+LFLAGS += -lcap
 
 OUTPUT += simpleCLpacketSniffer
-OBJS += Ethernet.o IP.o TCP_UDP.o  WSPCAP.o GOhdr.o simpleCLpacketSniffer.o 
+OBJS += Ethernet.o ARP.o IP.o TCP_UDP.o  WSPCAP.o GOhdr.o simpleCLpacketSniffer.o 
 
 default: all
 
