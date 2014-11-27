@@ -99,7 +99,6 @@
 #define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
 
 /* the following defines are taken from if_ether.h */
-
 # define ETH_P_IP        0x0800          /* Internet Protocol packet     */
 # define ETH_P_X25       0x0805          /* CCITT X.25                   */
 # define ETH_P_ARP       0x0806          /* Address Resolution packet    */
@@ -123,7 +122,7 @@
 # define ETH_P_PAUSE     0x8808          /* IEEE Pause frames. See 802.3 31B */
 # define ETH_P_SLOW      0x8809          /* Slow Protocol. See 802.3ad 43B */
 # define ETH_P_WCCP      0x883E          /* Web-cache coordination protocol
-                                         * defined in draft-wilson-wrec-wccp-v2-00.txt */
+ 	 	 	 	 	 	 	 	 	 	 	defined in draft-wilson-wrec-wccp-v2-00.txt */
 # define ETH_P_PPP_DISC  0x8863          /* PPPoE discovery messages     */
 # define ETH_P_PPP_SES   0x8864          /* PPPoE session messages       */
 # define ETH_P_MPLS_UC   0x8847          /* MPLS Unicast traffic         */
@@ -1010,7 +1009,6 @@ unsigned int ascii_to_bin(char *str_bin)
  this is going to be crappy!
  brief Takes an IPv4 dotted-notation address and returns the binary
  representation.
-
  param pIpStr A dotted-notation IPv4 address.
  return an IP Address, if one could be looked up. If pIpStr is actually
  IPv6, returns 1. If there was an error, returns -1 or 0.
@@ -1214,8 +1212,6 @@ char DumpPacket(char *buffer, int len, int quiet)
         	tcph = NULL;
         	udph = NULL;
 
-
-
             if(ip->protocol == 0x06){
                 buffer = buffer + (eth_contains_ip(eth_pkt));
                 buffer = buffer + (ip->header_len * 4);
@@ -1276,8 +1272,6 @@ char DumpPacket(char *buffer, int len, int quiet)
                 printf(",calc'd=%x",  cksum ? (unsigned short) get_udp_checksum(ip, udph) : 0);
                 printf(",sport=%d,dport=%d", ntohs(udph->srcPort),ntohs(udph->dstPort));
             }
-
-
         }
         printf("\n");
         fflush(stdout);
@@ -1634,15 +1628,13 @@ int main(int argc, char *argv[]){
             if(result < 0) {
                 printf("unable to bind to device.\n");
                 return EXIT_failure;
-
             }
         }
+
     }do {
 
         tv.tv_sec = 0;
         tv.tv_usec = 5000; /* 5ms */
-
-//      memset(rdata,'\0',65535);
 
         FD_ZERO(&readfd);
         data = rdata;

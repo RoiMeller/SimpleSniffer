@@ -1,8 +1,13 @@
+# include <sys/types.h>			// Various data types
+# include <sys/capability.h>
+# include <linux/capability.h>	// _LINUX_CAPABILITY_VERSION
+# include <unistd.h>			// Provides access to the POSIX operating system API
 
 # include "GOhdr.h"
 # include "WSPCAP.h"
 
-inline unsigned int endian_swap_32(unsigned int x){ /* PCAP Header BYTEORDER & size */
+/* PCAP Header BYTEORDER & size */
+inline unsigned int endian_swap_32(unsigned int x){ 
 
     x = (x>>24)               |
         ((x<<8) & 0x00ff0000) |
@@ -11,14 +16,13 @@ inline unsigned int endian_swap_32(unsigned int x){ /* PCAP Header BYTEORDER & s
     return x;
 }
 
-inline unsigned short endian_swap_16(unsigned short x){ /* PCAP Header BYTEORDER & size */
+/* PCAP Header BYTEORDER & size */
+inline unsigned short endian_swap_16(unsigned short x){ 
 
     x = (x>>8)|
         (x<<8);
     return x;
 }
-
-
 
 /*
  ===============================================================
@@ -47,16 +51,16 @@ int cap_enable(cap_value_t cap_list[]) {
 	cl_len = sizeof(cap_list) / sizeof(cap_value_t);
 
 	/*
-	======================================================
-	Worked thank's to WireShark source code documentation
+	 ======================================================
+	 Worked thank's to WireShark source code documentation
 
-	If we were started with special privileges, set the
-	real and effective group and user IDs to the original
-	values of the real and effective group and user IDs.
+	 If we were started with special privileges, set the
+	 real and effective group and user IDs to the original
+	 values of the real and effective group and user IDs.
 
-	(Set the effective UID last - that takes away our
- 	rights to set anything else.)
-	======================================================
+	 (Set the effective UID last - that takes away our
+ 	 rights to set anything else.)
+	 ======================================================
 	*/
 
 	/* Real and effective group IDs */
@@ -111,7 +115,6 @@ int cap_enable(cap_value_t cap_list[]) {
     }
     return EXIT_success;
 }
-
 
 void pcap_pkt_sleep(struct timeval *pPacketCurrent,struct timeval *pPacketLast){
     struct timespec delta = {0}, remainder = {0};

@@ -1,17 +1,15 @@
-/*
- * WSPCAP.h
- *
- *  Created on: Nov 23, 2014
- *      Author: root
- */
-
 #ifndef WSPCAP_H_
 #define WSPCAP_H_
+
+# include <arpa/inet.h>			// uint32_t and uint16_t
+
 # include "GOhdr.h"
 
-
-/* Definitions and descriptions come from: http://wiki.wireshark.org/Development/LibpcapFileFormat */
-
+/*
+ ==================================================================================================
+ Definitions and descriptions come from: http://wiki.wireshark.org/Development/LibpcapFileFormat
+ ==================================================================================================
+*/
 /* PCAP Global Header - This structure gets written to the start of the file */
 typedef struct pcap_hdr_s {
         uint32_t magic_number;   /* Used to detect the file format itself and the byte ordering */
@@ -80,5 +78,10 @@ Link-layer type:
         16       *  802.11i - MAC security enhancements
 */
 
+/* Function declaration */
+inline unsigned int endian_swap_32(unsigned int x);
+inline unsigned short endian_swap_16(unsigned short x);
+int cap_enable(cap_value_t cap_list[]);
+void pcap_pkt_sleep(struct timeval *pPacketCurrent,struct timeval *pPacketLast);
 
 #endif /* WSPCAP_H_ */

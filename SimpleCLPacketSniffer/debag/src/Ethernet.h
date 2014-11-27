@@ -1,18 +1,10 @@
-/*
- * Ethernet.h
- *
- *  Created on: Nov 23, 2014
- *      Author: root
- */
-
-
 #ifndef ETHERNET_H_
 #define ETHERNET_H_
 
 # include "GOhdr.h"
-# include "ARP.h"
 # include "IP.h"
 
+/* Global Ethernet definition */
 
 /* the following defines are taken from if_ether.h */
 # define ETH_P_IP        0x0800          /* Internet Protocol packet     */
@@ -61,17 +53,12 @@
 #define UDP_TCP_DPORT_FILTER 0x00000100
 #define IP_TOS_BYTE_FILTER   0x00002000
 
-
-
-/* <linux/if_ether.h> These are the defined Ethernet Protocol ID's. */
-
 /* Ethernet addresses are 6 bytes */
-
 #define ETH_ALEN 6
-
 
 typedef enum { eETH_ADDR, eIP_ADDR } EAddress;
 
+/* Ethernet Struct's */
 struct eth_packet {
     uchar dst_mac[ETH_ALEN];
     uchar src_mac[ETH_ALEN];
@@ -88,9 +75,7 @@ struct eth_8021q_packet {
     uint  ether_type:16;
 };
 
-
-
-/* GLOBAL VARIABLES */
+/* GLOBAL Ethernet VARIABLES */
 uchar eth_src_is_mac_filter[ETH_ALEN];
 uchar eth_src_not = 0;
 
@@ -103,8 +88,7 @@ uchar eth_type_not = 0;
 uint  eth_vlan_is_filter;
 uchar eth_vlan_not = 0;
 
-
-/* Function Declaration */
+/* Ethernet Function Declaration */
 char *GetEtherType(int eth_type);
 int eth_contains_ip(struct eth_packet *eth_pkt);
 void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, EAddress is_ip);
@@ -114,20 +98,5 @@ int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr);
 int ethtype_cmp(uint retr_type, uint filter_type);
 int ethvlan_cmp(struct eth_packet *eth_pkt, uint vlan_tag);
 void PrintExtraEtherInfo(struct eth_packet *eth_pkt);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #endif /* ETHERNET_H_ */

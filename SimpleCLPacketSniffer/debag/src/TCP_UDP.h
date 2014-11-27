@@ -1,19 +1,10 @@
-/*
- * TCP_UDP.h
- *
- *  Created on: Nov 23, 2014
- *      Author: root
- */
-
 #ifndef TCP_UDP_H_
 #define TCP_UDP_H_
 
 # include <error.h>
 # include <errno.h>
 
-
 /* GLOBAL VARIABLES */
-
 uint  udp_tcp_sport_is_filter;
 uchar udp_tcp_sport_not = 0;
 
@@ -21,7 +12,6 @@ uint  udp_tcp_dport_is_filter;
 uchar udp_tcp_dport_not = 0;
 
 /* STRUCTS */
-
 struct tcpudp_port_header {
     uint srcPort: 16;
     uint dstPort: 16;
@@ -80,8 +70,6 @@ typedef struct _tcpHdr
     uint urgp: 16;
 } tcpHdr;
 
-
-
 /*the tcp pseudo header*/
 struct tcp_pseudo {
     unsigned int src_addr;
@@ -91,18 +79,11 @@ struct tcp_pseudo {
     unsigned short length;
 } pseudohead;
 
-
+/* Function declaration */
 long checksum(unsigned short *addr, unsigned int count);
 long get_udp_checksum(struct ip_packet * myip, udpHdr * myudp);
 long get_tcp_checksum(struct ip_packet * myip, tcpHdr * mytcp);
 int udptcp_sport_cmp(struct ip_packet *ip, uint filter_port);
 int udptcp_dport_cmp(struct ip_packet *ip, uint filter_port);
-
-
-
-
-
-
-
 
 #endif /* TCP_UDP_H_ */

@@ -1,13 +1,13 @@
-
+# include <netinet/in.h>		// Internet Protocol family
 
 # include "Ethernet.h"
 # include "GOhdr.h"
-# include "ARP.h"
 # include "IP.h"
-# include <netinet/in.h>
+# include "ARP.h"
 
+/* Ethernet Function */
 
-
+/* <linux/if_ether.h> These are the defined Ethernet Protocol ID's. */
 char *GetEtherType(int eth_type){
     static char protohex[7] = {0};
 
@@ -91,7 +91,6 @@ char *GetProtocol(uint value){
 		return protohex;
     }
 }
-
 
 int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr){ // // Struct & filtering
     int i =0 ;

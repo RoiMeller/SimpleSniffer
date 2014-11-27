@@ -1,9 +1,12 @@
+# include <stdio.h>				// For standard things
+# include <string.h>			// strlen
+# include <netdb.h>				// definitions for network database operations
+# include <sys/socket.h>		// Declarations of socket constants, types, and functions
+# include <sys/types.h>			// Various data types
 
-# include <sys/socket.h>
-# include <stdio.h>
+
 # include "GOhdr.h"
-
-
+# include "IP.h"
 
 int ipcmp(uchar *ipstruct_addr, int addr){
 
@@ -11,8 +14,6 @@ int ipcmp(uchar *ipstruct_addr, int addr){
 
     return (addr) ? ((addr == ipstr_addr) ? 1 : 0) : 0;
 }
-
-
 
 /*
  ============================================================================
@@ -53,4 +54,3 @@ int atoip(const char *pIpStr){
     freeaddrinfo(servinfo);
     return t;
 }
-

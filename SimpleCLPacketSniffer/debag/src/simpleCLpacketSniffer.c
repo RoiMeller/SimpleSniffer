@@ -1,46 +1,43 @@
-	/*
-	=====================================================================================
-  	Simple CommandLine Packet Sniffer
+/*
+ =====================================================================================
+ Simple CommandLine Packet Sniffer
 
-  	An example program meant as a lightweight tcpdump tool for general
-	purpose sniffing and network traffic analysis.
+ An example program meant as a lightweight tcpdump tool for general
+ purpose sniffing and network traffic analysis.
 
-	filtering based on:
-	Ethernet mac addresses
-	Ethernet types
-	Ethernet vlan tags
-	IP addresses
-	IP protocol
-	IP TOS byte
-	TCP/UDP ports
-	Arbitrary 8-bit, 16-bit, and 32-bit fields at offsets
-	Arbitrary 32-bit mask at offset
-	Negative versions of the above
-	Interface restricted captures
-	PCAP file output
-	PCAP file input
-	Dumping selected packets on an interface
+ filtering based on:
+ Ethernet mac addresses
+ Ethernet types
+ Ethernet vlan tags
+ IP addresses
+ IP protocol
+ IP TOS byte
+ TCP/UDP ports
+ Arbitrary 8-bit, 16-bit, and 32-bit fields at offsets
+ Arbitrary 32-bit mask at offset
+ Negative versions of the above
+ Interface restricted captures
+ PCAP file output
+ PCAP file input
+ Dumping selected packets on an interface
 
-	Simple CL Packet Sniffer has the ability to take an input as either a pcap file,
-	or a local interface, and output to one or both of a pcap file and an interface.
+ Simple CL Packet Sniffer has the ability to take an input as either a pcap file,
+ or a local interface, and output to one or both of a pcap file and an interface.
 
-  	the format frame: 8 bytes (64 bits)
+ the format frame: 8 bytes (64 bits)
 
-  	References:
-  	classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
-	=====================================================================================
-	 */
+ References:
+ classic PCap: http://wiki.wireshark.org/Development/LibpcapFileFormat
+ =====================================================================================
+*/
 
 /* INCLUDES */
-
 # include <stdio.h>				// For standard things
 # include <stdint.h>			// Declare sets of integer types having specified widths, and shall define corresponding sets of macros.
 # include <sys/param.h>			// Old-style Unix parameters and limits
-# include <sys/socket.h>		// Declarations of socket constants, types, and functions
 # include <arpa/inet.h>			// uint32_t and uint16_t
 # include <net/ethernet.h>		// For ether_header
 # include <errno.h>				// Defines macros for reporting and retrieving error conditions
-# include <sys/types.h>			// Various data types
 # include <stdlib.h>			// malloc / EXIT_SUCCESS = 0, EXIT_FAILURE = 1
 # include <string.h>			// strlen
 # include <netinet/in.h>		// Internet Protocol family
@@ -62,20 +59,19 @@
 # include <sys/capability.h>
 # include <linux/capability.h>	// _LINUX_CAPABILITY_VERSION
 # include <sys/syscall.h>		// __NR_capget
-# include <netdb.h>				// definitions for network database operations
 # include <linux/prctl.h>
-# include "Ethernet.h"
+# include <netdb.h>				// definitions for network database operations
+# include <sys/socket.h>		// Declarations of socket constants, types, and functions
+# include <sys/types.h>			// Various data types
+
 # include "GOhdr.h"
-# include "ARP.h"
+# include "WSPCAP.h"
+# include "Ethernet.h"
 # include "IP.h"
 # include "TCP_UDP.h"
-# include "WSPCAP.h"
+# include "ARP.h"
 
-/* Function & Global Declaration */
-
-
-
-
+/* MAIN */
 int main(int argc, char *argv[]){
 
 	/* Declaration */

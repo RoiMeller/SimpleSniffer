@@ -1,15 +1,20 @@
+# SimpleCLpacketSniffer Makefile
+
 CC = gcc
-CFLAGS += -g -Wall 
-LFLAGS += -lcap
-OUTPUT = simpleSniffer
-OBJS += simpleCLpacketSniffer.o Ethernet.o GOhdr.o TCP_UDP.o IP.o ARP.o WSPCAP.o
+CFLAGS += -g -Wall
+
+# add the path to my library code; -L tells the linker where to find it
+LFLAGS += -L /home/hagai/git/SimpleSniffer/SimpleCLPacketSniffer/debag/src -lcap
+
+OUTPUT += simpleCLpacketSniffer
+OBJS += Ethernet.o IP.o TCP_UDP.o  WSPCAP.o GOhdr.o simpleCLpacketSniffer.o 
 
 default: all
 
 %.o: %.c
-	@echo "Compiling " $<
+	@echo "compiling... " $<
 	@$(CC) -c $(CFLAGS) -o $@ $<
-	
+
 $(OUTPUT): $(OBJS)
 	@echo "Linking " $@
 	@$(CC) $< $(LFLAGS) -o $@
@@ -19,6 +24,6 @@ all: $(OUTPUT)
 clean:
 	@rm -f $(OBJS)
 	@rm -f $(OUTPUT)
-	@echo Clean complete.
+	@echo Clean Complete.
 
 .PHONY: clean all

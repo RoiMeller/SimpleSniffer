@@ -1,15 +1,14 @@
-
-# include "Ethernet.h"
-# include "GOhdr.h"
-# include "ARP.h"
-# include "IP.h"
-# include "TCP_UDP.h"
 # include <stdio.h>				// For standard things
 # include <stdint.h>			// Declare sets of integer types having specified widths, and shall define corresponding sets of macros.
 # include <stdlib.h>			// malloc / EXIT_SUCCESS = 0, EXIT_FAILURE = 1
 # include <string.h>			// strlen
 # include <netinet/in.h>		// Internet Protocol family
 # include <netinet/tcp.h>		// Provides declarations for tcp header
+
+# include "GOhdr.h"
+# include "Ethernet.h"
+# include "IP.h"
+# include "TCP_UDP.h"
 
 void print_usage(){
 	printf("\n************************************ Simple Command Line packetSniffer ************************************\n");
@@ -42,13 +41,6 @@ void print_usage(){
     printf("| \n");
     printf("************************************************** Usage **************************************************\n");
 }
-
-
-
-
-
-
-
 
 unsigned char convertAsciiHexCharToBin(char asciiHexChar){
     unsigned char binByte = 0xFF;
@@ -304,8 +296,6 @@ char DumpPacket(char *buffer, int len, int quiet){
         	tcph = NULL;
         	udph = NULL;
 
-
-
             if(ip->protocol == 0x06){
                 buffer = buffer + (eth_contains_ip(eth_pkt));
                 buffer = buffer + (ip->header_len * 4);
@@ -376,7 +366,6 @@ char DumpPacket(char *buffer, int len, int quiet){
     return EXIT_success;
 }
 
-
 int sniff_nano_sleep(const struct timespec *req, struct timespec *remain){
     struct timespec _remainder;
     if(nanosleep(req, remain) == -1){
@@ -386,8 +375,6 @@ int sniff_nano_sleep(const struct timespec *req, struct timespec *remain){
     return EXIT_success;
 }
 
-
 void terminate_hnd(int sig){
     run = 0;
 }
-

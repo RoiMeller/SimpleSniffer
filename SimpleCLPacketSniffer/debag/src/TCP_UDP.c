@@ -1,7 +1,11 @@
-# include <stdio.h>
+# include <stdio.h>				// For standard things
+# include <stdlib.h>			// malloc / EXIT_SUCCESS = 0, EXIT_FAILURE = 
+# include <string.h>			// strlen
+# include <netinet/in.h>		// Internet Protocol family
+
+# include "GOhdr.h"
 # include "IP.h"
 # include "TCP_UDP.h"
-# include "GOhdr.h"
 
 
 /* used to ensure the integrity of data portions for data transmission */
@@ -96,7 +100,6 @@ long get_tcp_checksum(struct ip_packet * myip, tcpHdr * mytcp) {
     free(tcp);
     return res;
 }
-
 
 int udptcp_sport_cmp(struct ip_packet *ip, uint filter_port){
     uchar *buffer = (void *)ip;
