@@ -12,11 +12,7 @@ void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, E
 	int i = 0;
 	int l = 0;
 
-	static struct {
-        int len;
-        char *fmt;
-        char delim;
-    } addr_fmt[] = {{ETH_ALEN, "%x", ':'}, {IP_SIZE, "%d", '.'}};
+	static struct address_format addr_fmt[] = {{ETH_ALEN, "%x", ':'}, {IP_SIZE, "%d", '.'}};
 
     if(msg != NULL){
         l += snprintf(buf, buflen, "%s", msg);

@@ -308,7 +308,7 @@ int main(int argc, char *argv[]){
 	struct timeval rcvtime;
 	struct timeval lasttime = {0};
 	struct timeval curtime = {0};
-	struct filter filter = {{0}};
+	struct filter all_filter = {{0}};
 	uint sl;
 	uchar notflag = 0;
 
@@ -423,92 +423,92 @@ int main(int argc, char *argv[]){
                     notflag = 0;
                 }
                 else if(!strncmp("--vlan-id", argv[argc], 9) && lastarg != NULL){
-                    FILTER_SET_MASK(filter.filter_mask, ETH_VLAN_FILTER);
-                    filter.eth_vlan_is_filter = strtol(lastarg,NULL,0);
+                    FILTER_SET_MASK(all_filter.filter_mask, ETH_VLAN_FILTER);
+                    all_filter.eth_vlan_is_filter = strtol(lastarg,NULL,0);
                     if(notflag){
-                    	filter.eth_vlan_not = 1;
+                    	all_filter.eth_vlan_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--eth-src", argv[argc], 9) && lastarg != NULL){
-                    FILTER_SET_MASK(filter.filter_mask, ETH_SRC_FILTER);
+                    FILTER_SET_MASK(all_filter.filter_mask, ETH_SRC_FILTER);
                     memcpy(infomercial, lastarg, 12);
                     ascii_to_bin(infomercial);
-                    memcpy(filter.eth_src_is_mac_filter, infomercial, 6);
+                    memcpy(all_filter.eth_src_is_mac_filter, infomercial, 6);
                     if(notflag){
-                    	filter.eth_src_not = 1;
+                    	all_filter.eth_src_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--eth-dst", argv[argc], 9) && lastarg != NULL){
-                    FILTER_SET_MASK(filter.filter_mask, ETH_DST_FILTER);
+                    FILTER_SET_MASK(all_filter.filter_mask, ETH_DST_FILTER);
                     memcpy(infomercial, lastarg, 12);
                     ascii_to_bin(infomercial);
-                    memcpy(filter.eth_dst_is_mac_filter, infomercial, ETH_ALEN);
+                    memcpy(all_filter.eth_dst_is_mac_filter, infomercial, ETH_ALEN);
                     if(notflag){
-                    	filter.eth_dst_not = 1;
+                    	all_filter.eth_dst_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--eth-type", argv[argc], 10) && lastarg != NULL){
-                    FILTER_SET_MASK(filter.filter_mask, ETH_TYPE_FILTER);
-                    filter.eth_type_is_filter = strtol(lastarg, NULL, 0);
+                    FILTER_SET_MASK(all_filter.filter_mask, ETH_TYPE_FILTER);
+                    all_filter.eth_type_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	filter.eth_type_not = 1;
+                    	all_filter.eth_type_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-src", argv[argc], 7) && lastarg != NULL){
-                	filter.need_IP = 1;
-                    FILTER_SET_MASK(filter.filter_mask, IP_SRC_FILTER);
-                    filter.ip_src_is_filter = atoip(lastarg);
+                	all_filter.need_IP = 1;
+                    FILTER_SET_MASK(all_filter.filter_mask, IP_SRC_FILTER);
+                    all_filter.ip_src_is_filter = atoip(lastarg);
                     if(notflag){
-                    	filter.ip_src_not = 1;
+                    	all_filter.ip_src_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-dst", argv[argc], 7) &&lastarg != NULL){
-                	filter.need_IP = 1;
-                    FILTER_SET_MASK(filter.filter_mask, IP_DST_FILTER);
-                    filter.ip_dst_is_filter = atoip(lastarg);
+                	all_filter.need_IP = 1;
+                    FILTER_SET_MASK(all_filter.filter_mask, IP_DST_FILTER);
+                    all_filter.ip_dst_is_filter = atoip(lastarg);
                     if(notflag){
-                    	filter.ip_dst_not = 1;
+                    	all_filter.ip_dst_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-tos", argv[argc], 8) &&lastarg != NULL){
-                	filter.need_IP = 1;
-                    FILTER_SET_MASK(filter.filter_mask, IP_TOS_BYTE_FILTER);
-                    filter.ip_tos_byte_filter = strtol(lastarg, NULL, 0);
+                	all_filter.need_IP = 1;
+                    FILTER_SET_MASK(all_filter.filter_mask, IP_TOS_BYTE_FILTER);
+                    all_filter.ip_tos_byte_filter = strtol(lastarg, NULL, 0);
                     if(notflag) {
-                    	filter.ip_tos_byte_filter_not = 1;
+                    	all_filter.ip_tos_byte_filter_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-proto", argv[argc], 10) && lastarg != NULL){
-                	filter.need_IP = 1;
-                    FILTER_SET_MASK(filter.filter_mask, IP_PROTO_FILTER);
-                    filter.ipproto_is_filter = strtol(lastarg, NULL, 0);
+                	all_filter.need_IP = 1;
+                    FILTER_SET_MASK(all_filter.filter_mask, IP_PROTO_FILTER);
+                    all_filter.ipproto_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	filter.ipproto_not = 1;
+                    	all_filter.ipproto_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-sport", argv[argc], 10) && lastarg != NULL){
-                	filter.need_IP = 1;
-                    FILTER_SET_MASK(filter.filter_mask, UDP_TCP_SPORT_FILTER);
-                    filter.udp_tcp_sport_is_filter = strtol(lastarg, NULL, 0);
+                	all_filter.need_IP = 1;
+                    FILTER_SET_MASK(all_filter.filter_mask, UDP_TCP_SPORT_FILTER);
+                    all_filter.udp_tcp_sport_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	filter.udp_tcp_sport_not = 1;
+                    	all_filter.udp_tcp_sport_not = 1;
                     }
                     notflag = 0;
                 }
                 else if(!strncmp("--ip-dport", argv[argc], 10) && lastarg != NULL){
-                	filter.need_IP = 1;
-                    FILTER_SET_MASK(filter.filter_mask, UDP_TCP_DPORT_FILTER);
-                    filter.udp_tcp_dport_is_filter = strtol(lastarg, NULL, 0);
+                	all_filter.need_IP = 1;
+                    FILTER_SET_MASK(all_filter.filter_mask, UDP_TCP_DPORT_FILTER);
+                    all_filter.udp_tcp_dport_is_filter = strtol(lastarg, NULL, 0);
                     if(notflag){
-                    	filter.udp_tcp_dport_not = 1;
+                    	all_filter.udp_tcp_dport_not = 1;
                     }
                     notflag = 0;
 
@@ -608,7 +608,7 @@ int main(int argc, char *argv[]){
         tv.tv_sec = 0;
         tv.tv_usec = 5000; /* 5ms */
 
-//      memset(rdata,'\0',65535);
+
 
         FD_ZERO(&readfd);
         data = rdata;
@@ -657,7 +657,7 @@ int main(int argc, char *argv[]){
 
         if ( bytes_read > 0 ){
 
-            res = DumpPacket(data, bytes_read, display,&filter);
+            res = DumpPacket(data, bytes_read, display,&all_filter);
             ++pkts_rx;
 
 			if(!res) {

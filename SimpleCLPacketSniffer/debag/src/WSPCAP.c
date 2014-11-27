@@ -68,7 +68,7 @@ int cap_enable(cap_value_t cap_list[]) {
 		perror("setgid");
 		return EXIT_failure;
 	}
-	if (setegid(rgid) == -1) {
+	if (setegid(egid) == -1) {
 		perror("setegid");
 		return EXIT_failure;
 	}
@@ -78,7 +78,7 @@ int cap_enable(cap_value_t cap_list[]) {
 		perror("setuid");
 		return EXIT_failure;
 	}
-	if (seteuid(ruid) == -1) {
+	if (seteuid(euid) == -1) {
 		perror("seteuid");
 		return EXIT_failure;
 	}
