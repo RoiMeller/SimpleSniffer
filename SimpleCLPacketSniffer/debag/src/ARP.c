@@ -1,3 +1,9 @@
+# include <arpa/inet.h>			// uint32_t and uint16_t
+
+# include "ARP.h"
+# include "GOhdr.h"
+# include "Ethernet.h"
+
 /* ARP Function */
 
 /* ARP HW type to string */

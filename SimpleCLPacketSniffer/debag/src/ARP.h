@@ -1,6 +1,8 @@
 #ifndef ARP_H_
 #define ARP_H_
 
+# include "GOhdr.h"
+
 /* Global ARP definition */
 
 /* Hardware type - arp_hwtype_tostr() */
