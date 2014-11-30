@@ -5,7 +5,6 @@
 /* Global declaration */
 # define IP_SIZE  4
 
-
 /*
  ============================================================================
  This structure defines the fields within the IP frame. Since this program
@@ -57,12 +56,9 @@ struct ip_packet {
     uchar data[0];					/* message data up to 64KB */
 };
 
-
-
 /* Function declaration */
 int ipcmp(uchar *ipstruct_addr, int addr);
 int atoip(const char *pIpStr);
 char *GetProtocol(uint value);
-
 
 #endif /* IP_H_ */

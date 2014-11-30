@@ -3,7 +3,6 @@
 # include "ARP.h"
 # include "GOhdr.h"
 
-
 /* ARP Function */
 
 /* Get Ethernet address */
@@ -29,7 +28,6 @@ void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, E
         }
     }
 }
-
 
 /* ARP HW type to string */
 char *arp_hwtype_tostr(unsigned short hwtype){
@@ -82,8 +80,6 @@ void PrintAddr(char* msg, unsigned char *addr, EAddress is_ip) {
     WriteAddr(buf, 8192, msg, addr, is_ip);
     printf("%s", buf);
 }
-
-
 
 char *arp_target_hw(struct arp_packet *arp){
     unsigned char *tgt_hw_start;

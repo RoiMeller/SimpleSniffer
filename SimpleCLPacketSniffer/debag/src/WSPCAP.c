@@ -102,7 +102,7 @@ int cap_enable(cap_value_t cap_list[]) {
     }
 
     name = cap_to_text(caps, NULL);
-    printf("After setting: getuid: %d geteuid: %d Capabilities : %s\n", getuid(), geteuid(), name);
+    printf("After setting: getuid: %d geteuid: %d Capabilities %s\n", getuid(), geteuid(), name);
 
     if (cap_free(caps) == -1){
     	perror("CAP_FREE");

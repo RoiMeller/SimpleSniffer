@@ -6,7 +6,6 @@
 
 /* Ethernet Function */
 
-
 /* <linux/if_ether.h> These are the defined Ethernet Protocol ID's. */
 char *GetEtherType(int eth_type){
     static char protohex[7] = {0};
@@ -34,9 +33,6 @@ int eth_contains_ip(struct eth_packet *eth_pkt){ // eth main struct
 
     return 0;
 }
-
-
-
 
 int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr){ // // Struct & filtering
     int i =0 ;

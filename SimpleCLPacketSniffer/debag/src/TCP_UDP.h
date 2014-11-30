@@ -4,7 +4,6 @@
 # include <error.h>
 # include <errno.h>
 
-
 /* STRUCTS */
 struct tcpudp_port_header {
     uint srcPort: 16;

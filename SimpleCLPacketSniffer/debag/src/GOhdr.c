@@ -10,7 +10,6 @@
 # include "IP.h"
 # include "TCP_UDP.h"
 
-
 void print_usage(){
 	printf("\n************************************ Simple Command Line packetSniffer ************************************\n");
 	printf("| \n");
@@ -41,6 +40,43 @@ void print_usage(){
     printf("| Use Ctrl-C to stop capturing at any time.\n");
     printf("| \n");
     printf("************************************************** Usage **************************************************\n");
+}
+
+/* pcap dump frame: 8 bytes (64 bits) */
+
+/*
+ ============================================================================
+ Dump the len bytes pointed to by b to file out.
+
+ param b A block of memory
+ param len The number of bytes to dump
+ param dump An output stream.
+ ============================================================================
+*/
+void dump(void* b, int len, FILE *dump){
+    unsigned char *buf = b;
+    int i, cnt=0;
+    char str[17];
+    FILE *out = stdout;
+    memset(str, 0, 17);
+
+    if(dump != NULL){
+        out = dump;
+    }
+
+    for ( i = 0; i < len; i++ ){
+        if ( cnt % 16 == 0 ){
+            fprintf(out, "  %s\n%04X: ", str, cnt);
+            memset(str, 0, 17);
+        }
+        if ( buf[cnt] < ' '  ||  buf[cnt] >= 127 ){
+            str[cnt%16] = '.';
+        }else{
+            str[cnt%16] = buf[cnt];
+        }
+        fprintf(out, "%02X ", buf[cnt++]);
+    }
+    fprintf(out, "  %*s\n\n", 16+(16-len%16)*2, str);
 }
 
 unsigned char convertAsciiHexCharToBin(char asciiHexChar){
@@ -130,44 +166,6 @@ unsigned int ascii_to_bin(char *str_bin){
     return outBufIdx;
 }
 
-/* pcap dump frame: 8 bytes (64 bits) */
-
-/*
- ============================================================================
- Dump the len bytes pointed to by b to file out.
-
- param b A block of memory
- param len The number of bytes to dump
- param dump An output stream.
- ============================================================================
-*/
-void dump(void* b, int len, FILE *dump){
-    unsigned char *buf = b;
-    int i, cnt=0;
-    char str[17];
-    FILE *out = stdout;
-    memset(str, 0, 17);
-
-    if(dump != NULL){
-        out = dump;
-    }
-
-    for ( i = 0; i < len; i++ ){
-        if ( cnt % 16 == 0 ){
-            fprintf(out, "  %s\n%04X: ", str, cnt);
-            memset(str, 0, 17);
-        }
-        if ( buf[cnt] < ' '  ||  buf[cnt] >= 127 ){
-            str[cnt%16] = '.';
-        }else{
-            str[cnt%16] = buf[cnt];
-        }
-        fprintf(out, "%02X ", buf[cnt++]);
-    }
-    fprintf(out, "  %*s\n\n", 16+(16-len%16)*2, str);
-}
-
-
 int sniff_nano_sleep(const struct timespec *req, struct timespec *remain){
     struct timespec _remainder;
     if(nanosleep(req, remain) == -1){
@@ -176,5 +174,3 @@ int sniff_nano_sleep(const struct timespec *req, struct timespec *remain){
 
     return EXIT_success;
 }
-
-

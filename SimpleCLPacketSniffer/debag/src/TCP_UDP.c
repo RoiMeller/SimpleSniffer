@@ -7,7 +7,6 @@
 # include "IP.h"
 # include "TCP_UDP.h"
 
-
 /* used to ensure the integrity of data portions for data transmission */
 long checksum(unsigned short *addr, unsigned int count) {
 

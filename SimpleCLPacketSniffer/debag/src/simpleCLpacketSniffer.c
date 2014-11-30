@@ -71,15 +71,14 @@
 # include "TCP_UDP.h"
 # include "ARP.h"
 
-/* GLOBAL Ethernet VARIABLES */
-
-
+/* GLOBAL VARIABLES */
 static int run = 1;
 
-
+/* Functions */
 void terminate_hnd(int sig){
     run = 0;
 }
+
 char DumpPacket(char *buffer, int len, int quiet, struct filter *filter){
 	tcpHdr *tcph = NULL;
 	udpHdr *udph = NULL;
@@ -301,6 +300,11 @@ int main(int argc, char *argv[]){
 	char *pcap_fname = NULL;
 	char *iface = NULL;
 
+	unsigned long int pkts_rx = 0;
+	unsigned long int pkts_pass = 0;
+	uint sl;
+	uchar notflag = 0;
+
 	struct sockaddr_ll s1;
 	struct sockaddr_in sa;
 	struct ifreq interface_obj;
@@ -309,8 +313,6 @@ int main(int argc, char *argv[]){
 	struct timeval lasttime = {0};
 	struct timeval curtime = {0};
 	struct filter all_filter = {{0}};
-	uint sl;
-	uchar notflag = 0;
 
 	pcap_hdr_t in_pcap_header;
 	pcap_hdr_t pcap_header;
@@ -318,10 +320,6 @@ int main(int argc, char *argv[]){
 	pcaprec_hdr_t pcap_hdr;
 
 	fd_set readfd;
-
-	/* NEW */
-	unsigned long int pkts_rx = 0;
-	unsigned long int pkts_pass = 0;
 
     /*
 	=================================================================
@@ -342,9 +340,6 @@ int main(int argc, char *argv[]){
 		printf("This program must run as root\n");
 		return EXIT_failure;
 	}
-
-
-
 
     /*
      =================================================================
@@ -607,8 +602,6 @@ int main(int argc, char *argv[]){
 
         tv.tv_sec = 0;
         tv.tv_usec = 5000; /* 5ms */
-
-
 
         FD_ZERO(&readfd);
         data = rdata;

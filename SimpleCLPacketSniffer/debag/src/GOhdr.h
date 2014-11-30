@@ -4,8 +4,8 @@
 # include <stdio.h>				// For standard things
 # include <time.h>
 
-
 /* Global declaration */
+
 # define ERROR_PRINT perror
 # define EXIT_success 0
 # define EXIT_failure -1
@@ -29,6 +29,7 @@
 /* Defining a parameterized macro */
 #define FILTER_CHK_MASK(a,b) (((uint)a&(uint)b) == (uint)b) // The function check for mask value in mask filter
 #define FILTER_SET_MASK(a,b) (!FILTER_CHK_MASK(a,b)?a |= b : a) // Return 'b' if 0. 'a' otherwise
+
 #define ETH_ALEN 6
 
 typedef unsigned int uint;
@@ -71,10 +72,9 @@ struct filter {
 
 /* Function decloration */
 void print_usage();
+void dump(void* b, int len, FILE *dump);
 unsigned char convertAsciiHexCharToBin(char asciiHexChar);
 unsigned int ascii_to_bin(char *str_bin);
-void dump(void* b, int len, FILE *dump);
-char DumpPacket(char *buffer, int len, int quiet,struct filter *filter);
 int sniff_nano_sleep(const struct timespec *req, struct timespec *remain);
 void terminate_hnd(int sig);
 

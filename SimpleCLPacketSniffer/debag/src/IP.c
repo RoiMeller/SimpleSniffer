@@ -4,10 +4,8 @@
 # include <sys/socket.h>		// Declarations of socket constants, types, and functions
 # include <sys/types.h>			// Various data types
 
-
 # include "GOhdr.h"
 # include "IP.h"
-
 
 /* <netinet/in.h> Standard well-defined IP protocols. */
 char *GetProtocol(uint value){

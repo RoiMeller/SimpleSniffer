@@ -1,7 +1,6 @@
 #ifndef ARP_H_
 #define ARP_H_
 
-
 # include "Ethernet.h"
 # include "GOhdr.h"
 /* Global ARP definition */
@@ -31,11 +30,12 @@ struct arp_packet {
     uchar proto_alen;		// Length (in octets) of addresses used in the upper layer protocol.
     uint  opcode     : 16; 	// Specifies the operation that the sender is performing: 1 for request, 2 for reply.
 };
+
 struct address_format {
     int len;
     char *fmt;
     char delim;
-	};
+};
 
 /* ARP Function declorayion */
 char *arp_target_hw(struct arp_packet *arp);
