@@ -2,7 +2,6 @@
 #define WSPCAP_H_
 
 # include <arpa/inet.h>			// uint32_t and uint16_t
-
 # include "GOhdr.h"
 
 /*

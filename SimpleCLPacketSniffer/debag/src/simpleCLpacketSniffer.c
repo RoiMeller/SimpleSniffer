@@ -279,6 +279,7 @@ char DumpPacket(char *buffer, int len, int quiet, struct filter *filter){
     return EXIT_success;
 }
 
+
 /* MAIN */
 int main(int argc, char *argv[]){
 
@@ -288,7 +289,6 @@ int main(int argc, char *argv[]){
 	int sd=-1;
 	int bytes_read;
 	int display = 1;
-	int result = 0;
 
 	char res = 0;
 	char *rdata;
@@ -298,16 +298,14 @@ int main(int argc, char *argv[]){
 	char pcap_input = 0;
 	char pcap_byteswap = 0;
 	char *pcap_fname = NULL;
-	char *iface = NULL;
 
 	unsigned long int pkts_rx = 0;
 	unsigned long int pkts_pass = 0;
 	uint sl;
-	uchar notflag = 0;
+	int notflag = 0;
 
-	struct sockaddr_ll s1;
+
 	struct sockaddr_in sa;
-	struct ifreq interface_obj;
 	struct timeval tv;
 	struct timeval rcvtime;
 	struct timeval lasttime = {0};
@@ -381,11 +379,6 @@ int main(int argc, char *argv[]){
                 else if(!strncmp("--quiet", argv[argc], 7)){ /* CHOOSE RETHEAR TO keep the QUIET option ? */
                     display=0;
                 }
-
-                else if(!strncmp("--interface", argv[argc], 11) && lastarg != NULL){
-                    iface = lastarg;
-                }
-
                 else if(!strncmp("--input", argv[argc], 7) && lastarg != NULL){
                     pcap_input = 1;
                     pcap_fname = lastarg;
@@ -577,28 +570,7 @@ int main(int argc, char *argv[]){
         printf("snaplen: %u\n", in_pcap_header.snaplen);
         printf("version: %d.%d\n", in_pcap_header.version_major, in_pcap_header.version_minor);
     }
-
-    if(iface){
-
-        memset(&s1, 0, sizeof(struct sockaddr_ll));
-        strcpy((char *)interface_obj.ifr_name, iface);
-
-        result = ioctl(sd, SIOCGIFINDEX, &interface_obj);
-
-        if(result >= 0) {
-        	result = interface_obj.ifr_ifindex;
-            s1.sll_family = SOCK_FAM_TYPE;
-            s1.sll_ifindex = result;
-            s1.sll_protocol = SOCK_PROTO_TYPE;
-            result = bind(sd, (struct sockaddr *)&s1, sizeof(s1));
-
-            if(result < 0) {
-                printf("unable to bind to device.\n");
-                return EXIT_failure;
-
-            }
-        }
-    }do {
+    do {
 
         tv.tv_sec = 0;
         tv.tv_usec = 5000; /* 5ms */

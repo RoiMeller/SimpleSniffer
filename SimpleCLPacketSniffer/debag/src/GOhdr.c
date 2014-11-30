@@ -35,8 +35,6 @@ void print_usage(){
     printf("| To specify a negative filter use --not, or ! after the filter type.\n");
     printf("| example: --ip-src --not 192.168.1.1\n");
     printf("| \n");
-    printf("| --interface\n");
-    printf("| \n");
     printf("| Use Ctrl-C to stop capturing at any time.\n");
     printf("| \n");
     printf("************************************************** Usage **************************************************\n");
