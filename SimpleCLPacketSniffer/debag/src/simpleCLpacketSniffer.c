@@ -13,17 +13,11 @@
  IP protocol
  IP TOS byte
  TCP/UDP ports
- Arbitrary 8-bit, 16-bit, and 32-bit fields at offsets
- Arbitrary 32-bit mask at offset
  Negative versions of the above
- Interface restricted captures
  PCAP file output
  PCAP file input
- Dumping selected packets on an interface
 
- Simple CL Packet Sniffer has the ability to take an input as either a pcap file,
- or a local interface, and output to one or both of a pcap file and an interface.
-
+ Simple CL Packet Sniffer has the ability to take an output to a pcap. file.
  the format frame: 8 bytes (64 bits)
 
  References:
@@ -279,7 +273,6 @@ char DumpPacket(char *buffer, int len, int quiet, struct filter *filter){
     return EXIT_success;
 }
 
-
 /* MAIN */
 int main(int argc, char *argv[]){
 
@@ -289,6 +282,7 @@ int main(int argc, char *argv[]){
 	int sd=-1;
 	int bytes_read;
 	int display = 1;
+	int notflag = 0;
 
 	char res = 0;
 	char *rdata;
@@ -302,8 +296,6 @@ int main(int argc, char *argv[]){
 	unsigned long int pkts_rx = 0;
 	unsigned long int pkts_pass = 0;
 	uint sl;
-	int notflag = 0;
-
 
 	struct sockaddr_in sa;
 	struct timeval tv;
