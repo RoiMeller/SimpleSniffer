@@ -36,13 +36,13 @@
 #define ARP_REPLY   2
 
 /* ARP Struct */
-<<<<<<< HEAD
+
 
 /* Address Resolution Protocol */
 /** \struct arp_packet
  * 	\brief holds all the knowledge on the ARP header */
-=======
->>>>>>> 5a107da722a904f8ecd69beef2dcfb546736dd12
+
+
 struct arp_packet {
     uint  hw_type    : 16; 	//!< This field specifies the network protocol type. Example: Ethernet is 1
     uint  proto_type : 16; 	//!< This field specifies the internetwork protocol for which the ARP request is intended. For IPv4, this has the value 0x0800.
