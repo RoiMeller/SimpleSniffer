@@ -1,8 +1,11 @@
 #ifndef ARP_H_
 #define ARP_H_
 
+/* Address Resolution Protocol */
+
 # include "Ethernet.h"
 # include "GOhdr.h"
+
 /* Global ARP definition */
 
 /* Hardware type - arp_hwtype_tostr() */
@@ -21,8 +24,6 @@
 #define ARP_REPLY   2
 
 /* ARP Struct */
-
-/* Address Resolution Protocol */
 struct arp_packet {
     uint  hw_type    : 16; 	// This field specifies the network protocol type. Example: Ethernet is 1
     uint  proto_type : 16; 	// This field specifies the internetwork protocol for which the ARP request is intended. For IPv4, this has the value 0x0800.
