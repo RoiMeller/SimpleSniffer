@@ -1,3 +1,7 @@
+# ================================
+# SimpleCLpacketSniffer Makefile
+# ================================
+CC = gcc
 # ===================================================================
 # These are the usual GCC CFLAGS to set in all projects,but with a 
 # few others that may be needed to build libraries.
@@ -10,12 +14,11 @@ CFLAGS=-g -O2 -Wall -Wextra -Isrc -rdynamic -DNDEBUG $(OPTFLAGS)
 # Options used when linking a library, and allows someone else to 
 # augment the linking options using the OPTLIBS variable.
 # ===================================================================
-LIBS=-ldl $(OPTLIBS)
+LIBS=$(OPTLIBS)
 
 # ===================================================================
-# Setting an optional variable called PREFIX that will only have 
-# this value if the person running the Makefile didn't already 
-# give a PREFIX setting. That's what the ?= does.
+# Optional, only applies when user didn't give PREFIX setting 
+# That's what the ?= does.
 # ===================================================================
 PREFIX?=/usr/local
 
@@ -48,12 +51,11 @@ TEST_SRC=$(wildcard tests/*_tests.c)
 # ========================================================================
 TESTS=$(patsubst %.c,%,$(TEST_SRC))
 
-# ===================================================================
-# Finally, we say the ultimate target is build/libYOUR_LIBRARY.a, 
+# =============================================================================
+# Finally, we say the ultimate target is ../SimpleCLPacketSniffer.a, 
 # change it to be whatever library you are actually trying to build.
-# ===================================================================
-TARGET=build/libYOUR_LIBRARY.a
-SO_TARGET=$(patsubst %.a,%.so,$(TARGET))
+# =============================================================================
+TARGET=build/SimpleCLPacketSniffer
 
 # =====================================
 # augment Demonstration..
@@ -72,7 +74,7 @@ SO_TARGET=$(patsubst %.a,%.so,$(TARGET))
 # down in the Makefile and builds the unit tests.
 # The Target Build :
 # =============================================================================
-all: $(TARGET) $(SO_TARGET) tests
+all: $(TARGET) tests
 
 # =============================================================================
 # Another target for making "developer builds" that introduces a technique 
@@ -93,14 +95,14 @@ dev: all
 # In this case I'm adding -fPIC just for the library build using 
 # the += syntax to add it on.
 # =============================================================================
-$(TARGET): CFLAGS += -fPIC
+$(TARGET): CFLAGS += -fPIC 
 # =============================================================================
 # Now the real target where I say first make the build directory, 
 # then compile all the OBJECTS.
 # =============================================================================
 $(TARGET): build $(OBJECTS)
 # =============================================================================
-# Runs the ar command which actually makes the TARGET. 
+# Runs the ar command which actually makes the TARGET. 	
 # The syntax $@ $(OBJECTS) is a way of saying, 
 # "put the target for this Makefile source here and all the OBJECTS after that". 
 # In this case the $@ maps back to the $(TARGET) on line $(TARGET): CFLAGS += -fPIC, 
@@ -112,8 +114,6 @@ $(TARGET): build $(OBJECTS)
 # =============================================================================
 	ranlib $@
 
-$(SO_TARGET): $(TARGET) $(OBJECTS)
-	$(CC) -shared -o $@ $(OBJECTS)
 # =============================================================================
 # This just makes the build/ or bin/ directories if they don't exist.
 # This is then referenced from line $(TARGET): CFLAGS += -fPIC,
@@ -143,6 +143,7 @@ tests: CFLAGS += $(TARGET)
 tests: $(TESTS)
 # Call for shell script
 	sh ./tests/runtests.sh
+	
 # ===========================================================================================================
 # This puts the valgrind logs into /tmp/valgrind-*.log so you can go look and see what might be going on.
 # ===========================================================================================================
@@ -160,6 +161,7 @@ clean:
 	rm -f tests/tests.log
 	find . -name "*.gc*" -exec rm {} \;
 	rm -rf `find . -name "*.dSYM" -print`
+	@echo Clean Complete.
 
 # ==================================================================================
 # The Install

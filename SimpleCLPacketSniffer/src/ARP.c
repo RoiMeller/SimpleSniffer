@@ -9,7 +9,7 @@
 void WriteAddr(char *buf, unsigned int buflen, char *msg, unsigned char *addr, EAddress is_ip) {
 
 	int i = 0;
-	int l = 0;
+	uint l = 0;
 
 	static struct address_format addr_fmt[] = {{ETH_ALEN, "%x", ':'}, {IP_SIZE, "%d", '.'}};
 

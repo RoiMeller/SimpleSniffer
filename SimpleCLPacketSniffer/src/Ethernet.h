@@ -4,8 +4,6 @@
  * 	The file contain all the Ethernet related types  , defines , structs  and function declaration
  *  */
 
-
-
 #ifndef ETHERNET_H_
 #define ETHERNET_H_
 
@@ -116,7 +114,6 @@ char *GetEtherType(int eth_type);
  * 	\param  eth_pkt a pointer to a struct eth_packet contains the Ethernet packet.
  * 	\return a integer contians the length of the IP header  */
 int eth_contains_ip(struct eth_packet *eth_pkt);
-
 
 /** \fn int ethmask_cmp(unsigned char *retr_addr, unsigned char *filter_addr)
  * 	\brief
